@@ -1,0 +1,116 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Plan {
+  FREE
+  PREMIUM
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String?
+  plan         Plan     @default(FREE)
+  planExpires  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  areas  Area[]
+  tasks  Task[]
+  goals  Goal[]
+  habits Habit[]
+}
+
+model Area {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  icon      String?
+  color     String?  @default("#50B848")
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  tasks Task[]
+  goals Goal[]
+}
+
+model Task {
+  id         String       @id @default(cuid())
+  userId     String
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  areaId     String?
+  area       Area?        @relation(fields: [areaId], references: [id], onDelete: SetNull)
+  goalId     String?
+  goal       Goal?        @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  title      String
+  notes      String?
+  priority   TaskPriority @default(MEDIUM)
+  dueDate    DateTime?
+  isDone     Boolean      @default(false)
+  doneAt     DateTime?
+  repeatRule String?
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  completions TaskCompletion[]
+}
+
+model TaskCompletion {
+  id     String   @id @default(cuid())
+  taskId String
+  task   Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  doneAt DateTime @default(now())
+}
+
+model Goal {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  areaId    String?
+  area      Area?     @relation(fields: [areaId], references: [id], onDelete: SetNull)
+  title     String
+  target    Int       @default(100)
+  progress  Int       @default(0)
+  startDate DateTime?
+  endDate   DateTime?
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+
+  tasks Task[]
+}
+
+model Habit {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  streak    Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  logs HabitLog[]
+}
+
+model HabitLog {
+  id      String   @id @default(cuid())
+  habitId String
+  habit   Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
+  date    DateTime
+  done    Boolean  @default(true)
+
+  @@unique([habitId, date])
+}
