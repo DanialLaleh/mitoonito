@@ -21,7 +21,7 @@ export function AppShell({
     <div className="min-h-screen bg-[#F8FAF8]">
       <header className="sticky top-0 z-20 border-b border-brand-gray bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3">
-          <Logo className="h-7 w-auto" />
+          <Logo href="/app/today" className="h-7 w-auto" />
           <h1 className="text-sm font-semibold md:text-base">{title}</h1>
         </div>
         <nav className="mx-auto flex max-w-5xl gap-1 overflow-x-auto px-2 pb-2">
