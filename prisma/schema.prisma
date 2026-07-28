@@ -1,90 +1,34 @@
-generator client {
-  provider = "prisma-client-js"
-}
-
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-
-model User {
-  id            String    @id @default(cuid())
-  phoneNumber   String    @unique // ورود با شماره موبایل
-  name          String?
-  isPremium     Boolean   @default(false)
-  createdAt     DateTime  @default(now())
-  
-  // روابط
-  tasks         Task[]
-  habits        Habit[]
-  finances      Transaction[]
-  goals         Goal[]
-  subscriptions Subscription[]
-}
-
-model Task {
-  id          String   @id @default(cuid())
-  title       String
-  description String?
-  category    String   // ورزشی، درسی، روزانه و...
-  priority    String   @default("low") // high, medium, low
-  isCompleted Boolean  @default(false)
-  date        DateTime @default(now())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id])
-}
-
-model Habit {
-  id           String   @id @default(cuid())
-  name         String
-  icon         String?
-  color        String?
-  targetDays   Int      @default(30) // هدف مثلا ۳۰ روزه
-  logs         HabitLog[]
-  userId       String
-  user         User     @relation(fields: [userId], references: [id])
-}
-
-model HabitLog {
-  id        String   @id @default(cuid())
-  date      DateTime @default(now())
-  completed Boolean  @default(true)
-  habitId   String
-  habit     Habit    @relation(fields: [habitId], references: [id])
-}
-
-model Transaction {
-  id          String   @id @default(cuid())
-  amount      Float
-  type        String   // income (درآمد) یا expense (هزینه)
-  category    String   // تغذیه، باشگاه، تفریح و...
-  description String?
-  date        DateTime @default(now())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id])
-}
-
 model Goal {
   id          String   @id @default(cuid())
   title       String
-  deadline    DateTime?
-  progress    Int      @default(0) // درصد پیشرفت ۰ تا ۱۰۰
+  description String?
+  targetDate  DateTime?
+  isCompleted Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // روابط
   userId      String
-  user        User     @relation(fields: [userId], references: [id])
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks       Task[]   // یک هدف می‌تواند شامل چندین تسک باشد
+  areaId      String?
+  area        Area?    @relation(fields: [areaId], references: [id], onDelete: SetNull)
 }
 
-model Subscription {
-  id        String   @id @default(cuid())
-  planType  String   // Monthly, Yearly
-  startDate DateTime @default(now())
-  endDate   DateTime
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-}
+model Task {
+  id          String    @id @default(cuid())
+  title       String
+  date        DateTime  // تاریخ برنامه ریزی شده
+  isCompleted Boolean   @default(false)
+  completedAt DateTime? // زمان دقیق تیک خوردن تسک (۲۴ ساعته)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-model VerificationToken {
-  id          String   @id @default(cuid())
-  phoneNumber String
-  token       String   @unique
-  expires     DateTime
+  // روابط
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goalId      String?   // تسک می‌تواند اختیاری به یک هدف متصل باشد
+  goal        Goal?     @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  areaId      String?
+  area        Area?     @relation(fields: [areaId], references: [id], onDelete: SetNull)
 }
