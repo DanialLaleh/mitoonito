@@ -10,14 +10,20 @@ generator client {
 }
 
 // ۳. مدل‌های دیتابیس
+
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  name      String?
-  habits    Habit[]
-  areas     Area[]
-  createdAt DateTime @default(now())
+  id           String        @id @default(cuid())
+  email        String        @unique
+  password     String
+  name         String?
+  createdAt    DateTime      @default(now())
+  
+  // روابط
+  areas        Area[]
+  habits       Habit[]
+  goals        Goal[]
+  tasks        Task[]
+  transactions Transaction[]
 }
 
 model Area {
@@ -26,6 +32,24 @@ model Area {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   habits    Habit[]
+  goals     Goal[]
+}
+
+model Goal {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  isCompleted Boolean   @default(false)
+  deadline    DateTime?
+  createdAt   DateTime  @default(now())
+
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  areaId      String?
+  area        Area?     @relation(fields: [areaId], references: [id], onDelete: SetNull)
+  
+  tasks       Task[]
 }
 
 model Habit {
@@ -38,18 +62,53 @@ model Habit {
 
   userId       String
   user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  logs         HabitLog[]
+  
   areaId       String?
   area         Area?      @relation(fields: [areaId], references: [id], onDelete: SetNull)
+  
+  logs         HabitLog[]
 }
 
 model HabitLog {
   id        String   @id @default(cuid())
-  date      DateTime
+  loggedAt  DateTime // زمان انجام عادت
   createdAt DateTime @default(now())
 
   habitId   String
   habit     Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
 
-  @@unique([habitId, date])
+  @@unique([habitId, loggedAt])
+}
+
+model Task {
+  id          String    @id @default(cuid())
+  title       String
+  isCompleted Boolean   @default(false)
+  date        DateTime  @default(now()) // روزی که تسک برای آن برنامه‌ریزی شده
+  completedAt DateTime? // زمان دقیق تیک خوردن تسک (برای تحلیل ساعت طلایی)
+  createdAt   DateTime  @default(now())
+
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  goalId      String?
+  goal        Goal?     @relation(fields: [goalId], references: [id], onDelete: SetNull)
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+model Transaction {
+  id          String          @id @default(cuid())
+  amount      Float
+  type        TransactionType
+  category    String          // مثلاً: حقوق، اجاره، تفریح
+  description String?
+  date        DateTime        @default(now())
+  createdAt   DateTime        @default(now())
+
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
