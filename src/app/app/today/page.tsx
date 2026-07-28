@@ -1,255 +1,237 @@
+// src/app/app/today/page.tsx
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/current-user";
-import { createTaskAction, toggleTaskCompletedAction, deleteTaskAction } from "@/app/actions/tasks";
-import { logHabitAction } from "@/app/actions/habits";
+import {
+  createTaskAction,
+  toggleTaskCompletedAction,
+  deleteTaskAction,
+} from "@/app/actions/tasks";
 
-export default async function TodayPage({
-  searchParams,
-}: {
+interface PageProps {
   searchParams: Promise<{ date?: string }>;
-}) {
+}
+
+export default async function TodayPage({ searchParams }: PageProps) {
   const user = await getCurrentUser();
   if (!user) {
-    redirect("/auth/login");
+    redirect("/login");
   }
 
-  // ۱. مدیریت تاریخ انتخابی (امروز یا روزهای گذشته/آینده)
-  const resolvedSearchParams = await searchParams;
-  const targetDateStr = resolvedSearchParams.date || new Date().toISOString().split("T")[0];
-  const [year, month, day] = targetDateStr.split("-").map(Number);
+  const resolvedParams = await searchParams;
   
-  const targetDateStart = new Date(year, month - 1, day, 0, 0, 0, 0);
-  const targetDateEnd = new Date(year, month - 1, day, 23, 59, 59, 999);
+  // محاسبه تاریخ هدف (پیش‌فرض امروز)
+  const targetDate = resolvedParams.date
+    ? new Date(resolvedParams.date)
+    : new Date();
 
-  // ۲. واکشی تسک‌های مربوط به تاریخ انتخابی
+  // تعیین ابتدا و انتهای روز برای فیلتر دقیق
+  const startOfDay = new Date(targetDate);
+  startOfDay.setHours(0, 0, 0, 0);
+
+  const endOfDay = new Date(targetDate);
+  endOfDay.setHours(23, 59, 59, 999);
+
+  // واکشی تسک‌های مربوط به تاریخ انتخاب شده بر اساس dueDate
   const tasks = await prisma.task.findMany({
     where: {
       userId: user.id,
-      date: {
-        gte: targetDateStart,
-        lte: targetDateEnd,
+      dueDate: {
+        gte: startOfDay,
+        lte: endOfDay,
       },
     },
-    include: {
-      goal: true,
-    },
-    orderBy: { createdAt: "asc" },
-  });
-
-  // ۳. واکشی لیست عادت‌ها و لاگ‌های آن‌ها برای تاریخ انتخابی
-  const habits = await prisma.habit.findMany({
-    where: { userId: user.id },
-    include: {
-      logs: {
-        where: {
-          loggedAt: {
-            gte: targetDateStart,
-            lte: targetDateEnd,
-          },
-        },
-      },
+    orderBy: {
+      createdAt: "asc",
     },
   });
 
-  // ۴. دریافت لیست اهداف فعال جهت اتصال تسک‌های جدید به اهداف
-  const activeGoals = await prisma.goal.findMany({
-    where: { userId: user.id, isCompleted: false },
-  });
+  // محاسبه آمار کوتاه برای نمایش به کاربر
+  const completedCount = tasks.filter((t) => t.isCompleted).length;
+  const totalCount = tasks.length;
+  const completionRate = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
-  // تغییر روز (روز قبل و روز بعد) برای ناوبری سریع در PWA
-  const prevDate = new Date(targetDateStart);
-  prevDate.setDate(prevDate.getDate() - 1);
-  const prevDateStr = prevDate.toISOString().split("T")[0];
+  // تاریخ‌های روز قبل و بعد برای ناوبری سریع
+  const prevDateStr = new Date(targetDate.getTime() - 24 * 60 * 60 * 1000)
+    .toISOString()
+    .split("T")[0];
+  const nextDateStr = new Date(targetDate.getTime() + 24 * 60 * 60 * 1000)
+    .toISOString()
+    .split("T")[0];
 
-  const nextDate = new Date(targetDateStart);
-  nextDate.setDate(nextDate.getDate() + 1);
-  const nextDateStr = nextDate.toISOString().split("T")[0];
-
-  const formattedTargetDate = targetDateStart.toLocaleDateString("fa-IR", {
+  const formattedTargetDate = targetDate.toLocaleDateString("fa-IR", {
     weekday: "long",
-    day: "numeric",
+    year: "numeric",
     month: "long",
+    day: "numeric",
   });
 
   return (
-    <div className="max-w-md mx-auto px-4 py-6 pb-24 text-right animate-fadeIn" dir="rtl">
-      {/* ناوبری تاریخ */}
-      <div className="flex justify-between items-center bg-white border border-[#E6E7E8] p-3 rounded-2xl mb-6 shadow-sm">
+    <div className="max-w-md mx-auto p-4 space-y-6 pb-24">
+      {/* هدر صفحه و ناوبری تاریخ */}
+      <div className="flex items-center justify-between bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
         <a
           href={`/app/today?date=${prevDateStr}`}
-          className="px-3 py-1 bg-gray-50 border border-[#E6E7E8] rounded-xl text-xs font-semibold hover:bg-gray-100 transition-colors"
+          className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition"
         >
-          روز قبل
+          ← دیروز
         </a>
-        <span className="text-sm font-bold text-[#434345]">{formattedTargetDate}</span>
+        <div className="text-center">
+          <h1 className="font-bold text-gray-800 text-lg">برنامه‌ریزی روزانه</h1>
+          <p className="text-xs text-gray-500 mt-1">{formattedTargetDate}</p>
+        </div>
         <a
           href={`/app/today?date=${nextDateStr}`}
-          className="px-3 py-1 bg-gray-50 border border-[#E6E7E8] rounded-xl text-xs font-semibold hover:bg-gray-100 transition-colors"
+          className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition"
         >
-          روز بعد
+          فردا →
         </a>
       </div>
 
-      {/* بخش عادت‌های امروز */}
-      <div className="bg-white border border-[#E6E7E8] rounded-2xl p-4 mb-6 shadow-sm">
-        <h2 className="text-sm font-bold text-[#434345] mb-3">عادت‌های روزانه</h2>
-        {habits.length === 0 ? (
-          <p className="text-xs text-gray-400 text-center py-2">
-            هنوز عادتی ثبت نکرده‌ای. به صفحه عادت‌ها برو و اولین عادتت را بساز.
-          </p>
+      {/* بخش آمار کارایی روز */}
+      {totalCount > 0 && (
+        <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white p-4 rounded-2xl shadow-md">
+          <div className="flex justify-between items-center">
+            <div>
+              <p className="text-sm opacity-90">میزان پیشرفت امروز</p>
+              <h3 className="text-2xl font-bold mt-1">{completionRate}%</h3>
+            </div>
+            <div className="text-right">
+              <span className="bg-white/20 px-3 py-1 rounded-full text-xs font-semibold">
+                {completedCount} از {totalCount} تسک
+              </span>
+            </div>
+          </div>
+          <div className="w-full bg-white/20 h-2 rounded-full mt-3 overflow-hidden">
+            <div
+              className="bg-white h-full transition-all duration-300"
+              style={{ width: `${completionRate}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* لیست تسک‌ها */}
+      <div className="space-y-3">
+        <h2 className="font-semibold text-gray-700 text-sm">لیست کارها</h2>
+        {tasks.length === 0 ? (
+          <div className="bg-gray-50 border border-dashed border-gray-200 rounded-2xl p-8 text-center text-gray-400 text-sm">
+            هیچ تسکی برای این روز ثبت نشده است.
+          </div>
         ) : (
-          <div className="grid grid-cols-2 gap-2">
-            {habits.map((habit) => {
-              const isLogged = habit.logs.length > 0;
-              return (
-                <form key={habit.id} action={logHabitAction} className="w-full">
-                  <input type="hidden" name="habitId" value={habit.id} />
-                  <input type="hidden" name="date" value={targetDateStr} />
+          tasks.map((task) => (
+            <div
+              key={task.id}
+              className={`flex items-center justify-between p-4 rounded-xl border transition-all ${
+                task.isCompleted
+                  ? "bg-gray-50/80 border-gray-100 opacity-75"
+                  : "bg-white border-gray-200 shadow-sm"
+              }`}
+            >
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                {/* فرم Toggle وضعیت تسک */}
+                <form action={toggleTaskCompletedAction} className="flex items-center">
+                  <input type="hidden" name="id" value={task.id} />
+                  <input
+                    type="hidden"
+                    name="isCompleted"
+                    value={task.isCompleted ? "false" : "true"}
+                  />
                   <button
                     type="submit"
-                    className={`w-full text-right p-3 rounded-xl border text-xs font-semibold flex items-center justify-between transition-all active:scale-95 ${
-                      isLogged
-                        ? "bg-[#50B848]/10 border-[#50B848] text-[#367639]"
-                        : "bg-gray-50 border-[#E6E7E8] text-[#434345] hover:bg-gray-100"
+                    className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
+                      task.isCompleted
+                        ? "bg-green-500 border-green-500 text-white"
+                        : "border-gray-300 hover:border-green-500"
                     }`}
                   >
-                    <span>{habit.title}</span>
-                    <span
-                      className={`w-4 h-4 rounded-full border flex items-center justify-center ${
-                        isLogged ? "bg-[#50B848] border-[#50B848]" : "border-[#E6E7E8]"
-                      }`}
-                    >
-                      {isLogged && (
-                        <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={4}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
-                    </span>
+                    {task.isCompleted && (
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-4 w-4"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    )}
                   </button>
                 </form>
-              );
-            })}
-          </div>
-        )}
-      </div>
 
-      {/* بخش تسک‌های امروز */}
-      <div className="bg-white border border-[#E6E7E8] rounded-2xl p-4 mb-6 shadow-sm">
-        <h2 className="text-sm font-bold text-[#434345] mb-3">کارهای امروز</h2>
-
-        {/* لیست تسک‌ها */}
-        <div className="space-y-3 mb-4">
-          {tasks.length === 0 ? (
-            <p className="text-xs text-gray-400 text-center py-4">هیچ تسکی برای این روز ثبت نشده است.</p>
-          ) : (
-            tasks.map((task) => (
-              <div
-                key={task.id}
-                className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-[#E6E7E8]"
-              >
-                <div className="flex items-center gap-3">
-                  <form action={toggleTaskCompletedAction}>
-                    <input type="hidden" name="taskId" value={task.id} />
-                    <input type="hidden" name="isCompleted" value={task.isCompleted ? "false" : "true"} />
-                    <button
-                      type="submit"
-                      className={`w-5 h-5 rounded-lg border flex items-center justify-center transition-colors ${
-                        task.isCompleted ? "bg-[#50B848] border-[#50B848]" : "border-[#E6E7E8] bg-white"
-                      }`}
-                    >
-                      {task.isCompleted && (
-                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={4}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
-                    </button>
-                  </form>
-
-                  <div className="text-right">
-                    <span className={`text-xs font-semibold block ${task.isCompleted ? "line-through text-gray-400" : "text-[#434345]"}`}>
-                      {task.title}
-                    </span>
-                    {task.goal && (
-                      <span className="inline-block text-[9px] bg-[#9FD18B]/20 text-[#367639] px-1.5 py-0.5 rounded-md mt-1 font-bold">
-                        هدف: {task.goal.title}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
+                <div className="truncate">
+                  <p
+                    className={`text-sm font-medium ${
+                      task.isCompleted ? "line-through text-gray-400" : "text-gray-700"
+                    }`}
+                  >
+                    {task.title}
+                  </p>
                   {task.completedAt && (
-                    <span className="text-[10px] text-gray-400 font-mono" dir="ltr">
-                      {new Date(task.completedAt).toLocaleTimeString("fa-IR", {
+                    <span className="text-[10px] text-gray-400 block mt-0.5">
+                      انجام شده در ساعت {new Date(task.completedAt).toLocaleTimeString("fa-IR", {
                         hour: "2-digit",
                         minute: "2-digit",
-                        hour12: false,
                       })}
                     </span>
                   )}
-                  <form action={deleteTaskAction}>
-                    <input type="hidden" name="taskId" value={task.id} />
-                    <button type="submit" className="text-red-400 hover:text-red-600 text-xs">
-                      حذف
-                    </button>
-                  </form>
                 </div>
               </div>
-            ))
-          )}
-        </div>
 
-        {/* فرم ثبت تسک جدید با ساعت و اتصال اختیاری به اهداف */}
-        <div className="border-t border-gray-100 pt-4">
-          <h3 className="text-xs font-bold text-gray-500 mb-3">افزودن کار جدید</h3>
-          <form action={createTaskAction} className="space-y-3">
-            <input type="hidden" name="date" value={targetDateStr} />
-
-            <input
-              type="text"
-              name="title"
-              placeholder="مثال: تولید محتوای اینستاگرام میتونی‌تو"
-              required
-              className="w-full px-3 py-2 text-xs border border-[#E6E7E8] rounded-xl focus:outline-none focus:ring-1 focus:ring-[#50B848]"
-            />
-
-            <div className="grid grid-cols-2 gap-2">
-              {/* تعیین ساعت دلخواه (۲۴ ساعته) */}
-              <div>
-                <label className="block text-[10px] text-gray-400 mb-1">ساعت انجام (اختیاری)</label>
-                <input
-                  type="time"
-                  name="time"
-                  className="w-full px-3 py-2 text-xs border border-[#E6E7E8] rounded-xl focus:outline-none focus:ring-1 focus:ring-[#50B848] text-gray-500"
-                />
-              </div>
-
-              {/* اتصال به هدف */}
-              <div>
-                <label className="block text-[10px] text-gray-400 mb-1">اتصال به هدف</label>
-                <select
-                  name="goalId"
-                  className="w-full px-3 py-2 text-xs border border-[#E6E7E8] rounded-xl focus:outline-none focus:ring-1 focus:ring-[#50B848] text-gray-500"
+              {/* فرم حذف تسک */}
+              <form action={deleteTaskAction}>
+                <input type="hidden" name="id" value={task.id} />
+                <button
+                  type="submit"
+                  className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition"
                 >
-                  <option value="">بدون هدف</option>
-                  {activeGoals.map((g) => (
-                    <option key={g.id} value={g.id}>
-                      {g.title}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    />
+                  </svg>
+                </button>
+              </form>
             </div>
+          ))
+        )}
+      </div>
 
-            <button
-              type="submit"
-              className="w-full bg-[#50B848] text-white py-2 rounded-xl text-xs font-bold active:scale-95 transition-transform"
-            >
-              ثبت تسک
-            </button>
-          </form>
-        </div>
+      {/* فرم ایجاد تسک جدید */}
+      <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm space-y-3">
+        <h3 className="font-semibold text-gray-700 text-sm">افزودن کار جدید</h3>
+        <form action={createTaskAction} className="flex gap-2">
+          <input
+            type="hidden"
+            name="dueDate"
+            value={targetDate.toISOString().split("T")[0]}
+          />
+          <input
+            type="text"
+            name="title"
+            placeholder="مثال: تمرین با وزنه برای فیتنس..."
+            required
+            className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-green-500"
+          />
+          <button
+            type="submit"
+            className="bg-green-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-green-700 transition"
+          >
+            ثبت
+          </button>
+        </form>
       </div>
     </div>
   );
