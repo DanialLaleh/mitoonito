@@ -1,54 +1,72 @@
-"use server";
+// src/app/actions/tasks.ts
+'use server'
 
-import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/auth/current-user";
-import { revalidatePath } from "next/cache";
+import { prisma } from "@/lib/prisma"
+import { getCurrentUser } from "@/lib/auth/current-user"
+import { revalidatePath } from "next/cache"
 
-// یکپارچه‌سازی متدها برای جلوگیری از تکرار کد
-export async function createTask(data: { title: string; description?: string; dueDate?: Date; areaId?: string; points?: number }) {
-  const user = await getCurrentUser();
-  if (!user) throw new Error("Unauthorized");
+/**
+ * ایجاد تسک جدید
+ * با Schema فعلی هماهنگ شده و از dueDate استفاده می‌کند
+ */
+export async function createTaskAction(formData: FormData) {
+  const user = await getCurrentUser()
+  if (!user) throw new Error("لطفا ابتدا وارد حساب خود شوید")
 
-  const task = await prisma.task.create({
+  const title = formData.get("title") as string
+  const dueDateString = formData.get("dueDate") as string // فرمت: YYYY-MM-DD
+  
+  if (!title) throw new Error("عنوان تسک الزامی است")
+
+  await prisma.task.create({
     data: {
+      title,
+      dueDate: dueDateString ? new Date(dueDateString) : new Date(),
       userId: user.id,
-      title: data.title,
-      description: data.description,
-      dueDate: data.dueDate || new Date(), // پیش‌فرض امروز
-      points: data.points || 15,
-      // اگر areaId در آینده اضافه شد، اینجا قابل گسترش است
+      isCompleted: false,
     },
-  });
+  })
 
-  revalidatePath("/app/today");
-  revalidatePath("/app/dashboard");
-  return task;
+  revalidatePath("/app/today")
+  revalidatePath("/app/dashboard")
 }
 
-export async function toggleTaskStatus(taskId: string, isCompleted: boolean) {
-  const user = await getCurrentUser();
-  if (!user) throw new Error("Unauthorized");
+/**
+ * تغییر وضعیت انجام تسک
+ * فیلد completedAt را برای تحلیل "ساعات طلایی" بروزرسانی می‌کند
+ */
+export async function toggleTaskCompletedAction(formData: FormData) {
+  const user = await getCurrentUser()
+  if (!user) throw new Error("عدم دسترسی")
+
+  const id = formData.get("id") as string
+  const isCompleted = formData.get("isCompleted") === "true"
 
   await prisma.task.update({
-    where: { id: taskId, userId: user.id },
+    where: { id, userId: user.id },
     data: {
       isCompleted,
-      completedAt: isCompleted ? new Date() : null, // ثبت زمان دقیق برای تحلیل ساعت طلایی
+      completedAt: isCompleted ? new Date() : null,
     },
-  });
+  })
 
-  revalidatePath("/app/today");
-  revalidatePath("/app/dashboard");
+  revalidatePath("/app/today")
+  revalidatePath("/app/dashboard")
 }
 
-export async function deleteTask(taskId: string) {
-  const user = await getCurrentUser();
-  if (!user) throw new Error("Unauthorized");
+/**
+ * حذف تسک
+ */
+export async function deleteTaskAction(formData: FormData) {
+  const user = await getCurrentUser()
+  if (!user) throw new Error("عدم دسترسی")
+
+  const id = formData.get("id") as string
 
   await prisma.task.delete({
-    where: { id: taskId, userId: user.id },
-  });
+    where: { id, userId: user.id },
+  })
 
-  revalidatePath("/app/today");
-  revalidatePath("/app/dashboard");
+  revalidatePath("/app/today")
+  revalidatePath("/app/dashboard")
 }
