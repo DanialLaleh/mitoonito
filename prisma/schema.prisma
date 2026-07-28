@@ -7,110 +7,84 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Plan {
-  FREE
-  PREMIUM
-}
-
-enum TaskPriority {
-  LOW
-  MEDIUM
-  HIGH
-}
-
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
-  name         String?
-  plan         Plan     @default(FREE)
-  planExpires  DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  areas  Area[]
-  tasks  Task[]
-  goals  Goal[]
-  habits Habit[]
-}
-
-model Area {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title     String
-  icon      String?
-  color     String?  @default("#50B848")
-  sortOrder Int      @default(0)
-  createdAt DateTime @default(now())
-
-  tasks Task[]
-  goals Goal[]
+  id            String    @id @default(cuid())
+  phoneNumber   String    @unique // ورود با شماره موبایل
+  name          String?
+  isPremium     Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  
+  // روابط
+  tasks         Task[]
+  habits        Habit[]
+  finances      Transaction[]
+  goals         Goal[]
+  subscriptions Subscription[]
 }
 
 model Task {
-  id         String       @id @default(cuid())
-  userId     String
-  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  areaId     String?
-  area       Area?        @relation(fields: [areaId], references: [id], onDelete: SetNull)
-  goalId     String?
-  goal       Goal?        @relation(fields: [goalId], references: [id], onDelete: SetNull)
-  title      String
-  notes      String?
-  priority   TaskPriority @default(MEDIUM)
-  dueDate    DateTime?
-  isDone     Boolean      @default(false)
-  doneAt     DateTime?
-  repeatRule String?
-  createdAt  DateTime     @default(now())
-  updatedAt  DateTime     @updatedAt
-
-  completions TaskCompletion[]
-}
-
-model TaskCompletion {
-  id     String   @id @default(cuid())
-  taskId String
-  task   Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  doneAt DateTime @default(now())
-}
-
-model Goal {
-  id        String    @id @default(cuid())
-  userId    String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  areaId    String?
-  area      Area?     @relation(fields: [areaId], references: [id], onDelete: SetNull)
-  title     String
-  target    Int       @default(100)
-  progress  Int       @default(0)
-  startDate DateTime?
-  endDate   DateTime?
-  isActive  Boolean   @default(true)
-  createdAt DateTime  @default(now())
-
-  tasks Task[]
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  category    String   // ورزشی، درسی، روزانه و...
+  priority    String   @default("low") // high, medium, low
+  isCompleted Boolean  @default(false)
+  date        DateTime @default(now())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
 }
 
 model Habit {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title     String
-  streak    Int      @default(0)
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-
-  logs HabitLog[]
+  id           String   @id @default(cuid())
+  name         String
+  icon         String?
+  color        String?
+  targetDays   Int      @default(30) // هدف مثلا ۳۰ روزه
+  logs         HabitLog[]
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
 }
 
 model HabitLog {
-  id      String   @id @default(cuid())
-  habitId String
-  habit   Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
-  date    DateTime
-  done    Boolean  @default(true)
+  id        String   @id @default(cuid())
+  date      DateTime @default(now())
+  completed Boolean  @default(true)
+  habitId   String
+  habit     Habit    @relation(fields: [habitId], references: [id])
+}
 
-  @@unique([habitId, date])
+model Transaction {
+  id          String   @id @default(cuid())
+  amount      Float
+  type        String   // income (درآمد) یا expense (هزینه)
+  category    String   // تغذیه، باشگاه، تفریح و...
+  description String?
+  date        DateTime @default(now())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+}
+
+model Goal {
+  id          String   @id @default(cuid())
+  title       String
+  deadline    DateTime?
+  progress    Int      @default(0) // درصد پیشرفت ۰ تا ۱۰۰
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+}
+
+model Subscription {
+  id        String   @id @default(cuid())
+  planType  String   // Monthly, Yearly
+  startDate DateTime @default(now())
+  endDate   DateTime
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model VerificationToken {
+  id          String   @id @default(cuid())
+  phoneNumber String
+  token       String   @unique
+  expires     DateTime
 }
