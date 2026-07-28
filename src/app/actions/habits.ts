@@ -1,280 +1,110 @@
-// src/app/actions/habits.ts
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { startOfDay, subDays, isSameDay, differenceInCalendarDays } from "date-fns";
+import { getCurrentUser } from "@/lib/auth/current-user";
 
-type HabitFrequency = "daily" | "weekly" | "custom";
-
-function normalizeDate(input: Date) {
-  return startOfDay(new Date(input));
+function normalizeString(value: FormDataEntryValue | null): string {
+  if (typeof value !== "string") return "";
+  return value.trim();
 }
 
-function getStreakDates(logDates: Date[]) {
-  const sorted = [...logDates]
-    .map((date) => normalizeDate(date))
-    .sort((a, b) => b.getTime() - a.getTime());
+/**
+ * ایجاد یک عادت جدید
+ */
+export async function createHabitAction(formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Unauthorized");
 
-  if (sorted.length === 0) {
-    return { currentStreak: 0, lastCompletedDate: null as Date | null };
-  }
+  const title = normalizeString(formData.get("title"));
+  if (!title) throw new Error("عنوان عادت اجباری است");
 
-  let currentStreak = 0;
-  let cursor = normalizeDate(new Date());
-  let firstLogMatched = false;
+  await prisma.habit.create({
+    data: {
+      userId: user.id,
+      title,
+    },
+  });
 
-  for (const logDate of sorted) {
-    const diff = differenceInCalendarDays(cursor, logDate);
-
-    if (diff === 0 && !firstLogMatched) {
-      currentStreak += 1;
-      firstLogMatched = true;
-      cursor = subDays(cursor, 1);
-      continue;
-    }
-
-    if (diff === 1) {
-      currentStreak += 1;
-      cursor = subDays(cursor, 1);
-      continue;
-    }
-
-    break;
-  }
-
-  return {
-    currentStreak,
-    lastCompletedDate: sorted[0] ?? null,
-  };
+  revalidatePath("/app/habits");
+  revalidatePath("/app/today");
+  revalidatePath("/app/dashboard");
 }
 
-export async function createHabit(input: {
-  userId: string;
-  title: string;
-  description?: string | null;
-  frequency?: HabitFrequency;
-  areaId?: string | null;
-}) {
-  try {
-    const habit = await prisma.habit.create({
+/**
+ * ثبت انجام شدن یک عادت (Log)
+ * این بخش قلب تپنده گیمیفیکیشن در عادت‌هاست
+ */
+export async function logHabitAction(formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const habitId = normalizeString(formData.get("habitId"));
+  const dateStr = normalizeString(formData.get("date")); // فرمت YYYY-MM-DD
+  
+  if (!habitId) throw new Error("شناسه عادت یافت نشد");
+
+  // تنظیم تاریخ لاگ (اگر تاریخ ارسال نشود، امروز در نظر گرفته می‌شود)
+  let logDate = new Date();
+  if (dateStr) {
+    const [year, month, day] = dateStr.split("-").map(Number);
+    logDate = new Date(year, month - 1, day);
+  }
+  
+  // شروع و پایان آن روز برای جلوگیری از ثبت تکراری در یک روز
+  const startOfDay = new Date(logDate.setHours(0, 0, 0, 0));
+  const endOfDay = new Date(logDate.setHours(23, 59, 59, 999));
+
+  const existingLog = await prisma.habitLog.findFirst({
+    where: {
+      habitId,
+      loggedAt: {
+        gte: startOfDay,
+        lte: endOfDay,
+      },
+    },
+  });
+
+  if (existingLog) {
+    // اگر قبلاً ثبت شده، آن را حذف کن (Toggle)
+    await prisma.habitLog.delete({
+      where: { id: existingLog.id },
+    });
+  } else {
+    // ثبت لاگ جدید برای عادت
+    await prisma.habitLog.create({
       data: {
-        userId: input.userId,
-        title: input.title.trim(),
-        description: input.description?.trim() || null,
-        frequency: input.frequency || "daily",
-        areaId: input.areaId || null,
+        habitId,
+        loggedAt: startOfDay, // ذخیره در ابتدای روز برای یکپارچگی تحلیل‌ها
       },
     });
-
-    return { success: true, habit };
-  } catch (error) {
-    console.error("Create Habit Error:", error);
-    return { success: false, error: "Failed to create habit" };
   }
+
+  revalidatePath("/app/habits");
+  revalidatePath("/app/today");
+  revalidatePath("/app/dashboard");
 }
 
-export async function updateHabit(input: {
-  habitId: string;
-  userId: string;
-  title?: string;
-  description?: string | null;
-  frequency?: HabitFrequency;
-  areaId?: string | null;
-}) {
-  try {
-    const habit = await prisma.habit.findFirst({
-      where: {
-        id: input.habitId,
-        userId: input.userId,
-      },
-    });
+/**
+ * حذف یک عادت و تمام لاگ‌های مربوط به آن
+ */
+export async function deleteHabitAction(formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Unauthorized");
 
-    if (!habit) {
-      return { success: false, error: "Habit not found" };
-    }
+  const habitId = normalizeString(formData.get("habitId"));
+  if (!habitId) throw new Error("شناسه عادت یافت نشد");
 
-    const updatedHabit = await prisma.habit.update({
-      where: { id: input.habitId },
-      data: {
-        ...(input.title !== undefined ? { title: input.title.trim() } : {}),
-        ...(input.description !== undefined
-          ? { description: input.description?.trim() || null }
-          : {}),
-        ...(input.frequency !== undefined ? { frequency: input.frequency } : {}),
-        ...(input.areaId !== undefined ? { areaId: input.areaId || null } : {}),
-      },
-    });
+  // حذف لاگ‌ها ابتدا برای رعایت سلامت دیتابیس (اگر Cascade تنظیم نشده باشد)
+  await prisma.habitLog.deleteMany({
+    where: { habitId },
+  });
 
-    return { success: true, habit: updatedHabit };
-  } catch (error) {
-    console.error("Update Habit Error:", error);
-    return { success: false, error: "Failed to update habit" };
-  }
-}
+  await prisma.habit.delete({
+    where: { id: habitId, userId: user.id },
+  });
 
-export async function deleteHabit(input: { habitId: string; userId: string }) {
-  try {
-    const habit = await prisma.habit.findFirst({
-      where: {
-        id: input.habitId,
-        userId: input.userId,
-      },
-    });
-
-    if (!habit) {
-      return { success: false, error: "Habit not found" };
-    }
-
-    await prisma.habit.delete({
-      where: { id: input.habitId },
-    });
-
-    return { success: true };
-  } catch (error) {
-    console.error("Delete Habit Error:", error);
-    return { success: false, error: "Failed to delete habit" };
-  }
-}
-
-export async function toggleHabitLog(input: {
-  habitId: string;
-  userId: string;
-  date: Date;
-}) {
-  try {
-    const targetDate = normalizeDate(input.date);
-
-    const habit = await prisma.habit.findFirst({
-      where: {
-        id: input.habitId,
-        userId: input.userId,
-      },
-    });
-
-    if (!habit) {
-      return { success: false, error: "Habit not found" };
-    }
-
-    const existingLog = await prisma.habitLog.findFirst({
-      where: {
-        habitId: input.habitId,
-        date: targetDate,
-      },
-    });
-
-    if (existingLog) {
-      await prisma.habitLog.delete({
-        where: { id: existingLog.id },
-      });
-
-      return { success: true, status: "removed" as const };
-    }
-
-    const createdLog = await prisma.habitLog.create({
-      data: {
-        habitId: input.habitId,
-        date: targetDate,
-      },
-    });
-
-    return { success: true, status: "logged" as const, log: createdLog };
-  } catch (error) {
-    console.error("Toggle Habit Log Error:", error);
-    return { success: false, error: "Failed to toggle habit log" };
-  }
-}
-
-export async function getHabitStreak(input: {
-  habitId: string;
-  userId: string;
-}) {
-  try {
-    const habit = await prisma.habit.findFirst({
-      where: {
-        id: input.habitId,
-        userId: input.userId,
-      },
-    });
-
-    if (!habit) {
-      return { success: false, error: "Habit not found" };
-    }
-
-    const logs = await prisma.habitLog.findMany({
-      where: {
-        habitId: input.habitId,
-      },
-      select: {
-        date: true,
-      },
-      orderBy: {
-        date: "desc",
-      },
-    });
-
-    const streak = getStreakDates(logs.map((log) => log.date));
-
-    return {
-      success: true,
-      currentStreak: streak.currentStreak,
-      lastCompletedDate: streak.lastCompletedDate,
-    };
-  } catch (error) {
-    console.error("Get Habit Streak Error:", error);
-    return { success: false, error: "Failed to calculate streak" };
-  }
-}
-
-export async function getHabitsOverview(input: {
-  userId: string;
-  days?: number;
-}) {
-  try {
-    const days = input.days ?? 7;
-    const today = new Date();
-    const fromDate = subDays(today, days - 1);
-
-    const habits = await prisma.habit.findMany({
-      where: { userId: input.userId },
-      include: {
-        logs: {
-          where: {
-            date: {
-              gte: fromDate,
-              lte: today,
-            },
-          },
-          select: {
-            date: true,
-          },
-          orderBy: {
-            date: "desc",
-          },
-        },
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
-
-    const overview = habits.map((habit) => {
-      const streak = getStreakDates(habit.logs.map((log) => log.date));
-
-      return {
-        id: habit.id,
-        title: habit.title,
-        description: habit.description,
-        frequency: habit.frequency,
-        completedDaysCount: habit.logs.length,
-        successRate: Math.round((habit.logs.length / days) * 100),
-        currentStreak: streak.currentStreak,
-        lastCompletedDate: streak.lastCompletedDate,
-      };
-    });
-
-    return { success: true, habits: overview };
-  } catch (error) {
-    console.error("Get Habits Overview Error:", error);
-    return { success: false, error: "Failed to load habits overview" };
-  }
+  revalidatePath("/app/habits");
+  revalidatePath("/app/today");
+  revalidatePath("/app/dashboard");
 }
