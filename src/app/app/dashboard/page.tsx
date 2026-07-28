@@ -1,4 +1,4 @@
-// src/app/app/dashboard/page.tsx (نسخه ارتقا یافته برای موبایل و PWA)
+// src/app/app/dashboard/page.tsx
 import { getDashboardAnalytics } from "@/app/actions/dashboard";
 import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
@@ -26,7 +26,7 @@ export default async function DashboardPage() {
   // سناریوی بدون فعالیت در ۷ روز گذشته (Empty State)
   if (totalActivity === 0 && data.totalTasks === 0) {
     return (
-      <div className="p-6 max-w-md mx-auto my-12 text-center space-y-6" dir="rtl">
+      <div className="p-6 max-w-md mx-auto my-12 text-center space-y-6 animate-fade-in" dir="rtl">
         <div className="text-6xl">🚀</div>
         <h2 className="text-xl font-bold text-[#434345]">داشبورد شما آماده تحلیل است!</h2>
         <p className="text-gray-400 text-sm leading-relaxed">
@@ -34,7 +34,7 @@ export default async function DashboardPage() {
         </p>
         <Link 
           href="/app/today" 
-          className="inline-block w-full py-3 bg-[#50B848] text-white rounded-xl font-bold hover:bg-[#367639] active:scale-[0.98] transition-all text-center"
+          className="inline-block w-full py-3.5 bg-[#50B848] text-white rounded-xl font-bold hover:bg-[#367639] active:scale-[0.98] transition-all text-center text-sm shadow-sm"
         >
           ورود به برنامه امروز
         </Link>
@@ -88,13 +88,49 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* پراکندگی زمانی به عنوان بخش اصلی گزارش */}
+      {/* وضعیت اهداف فعال */}
+      {data.goalsProgress && data.goalsProgress.length > 0 && (
+        <div className="bg-white p-5 rounded-2xl border border-[#E6E7E8] shadow-sm">
+          <h3 className="font-bold text-[#434345] text-sm mb-4">پیشرفت اهداف فعال</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {data.goalsProgress.map((goal: any) => (
+              <div key={goal.id} className="p-4 bg-gray-50 rounded-xl border border-gray-100 space-y-2">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="font-bold text-[#434345]">{goal.title}</span>
+                  <span className="text-[#50B848] font-bold">{goal.progress}%</span>
+                </div>
+                <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
+                  <div 
+                    className="bg-[#50B848] h-full transition-all duration-500" 
+                    style={{ width: `${goal.progress}%` }}
+                  ></div>
+                </div>
+                <div className="flex justify-between text-[10px] text-gray-400">
+                  <span>{goal.completedTasks} تسک تکمیل شده از {goal.totalTasks} تسک کل</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* پراکندگی زمانی فعالیت‌ها */}
       <div className="bg-white p-5 rounded-2xl border border-[#E6E7E8] shadow-sm">
         <h3 className="font-bold text-[#434345] text-sm mb-4">تمرکز زمانی کارهای شما</h3>
         <div className="space-y-4">
           {Object.entries(data.activityDistribution).map(([key, value]) => {
-            const labels: any = { morning: "صبح (۶:۰۰ تا ۱۲:۰۰)", afternoon: "ظهر/عصر (۱۲:۰۰ تا ۱۸:۰۰)", evening: "شب (۱۸:۰۰ تا ۲۴:۰۰)", night: "نیمه‌شب (۲۴:۰۰ تا ۶:۰۰)" };
-            const colors: any = { morning: "bg-[#9FD18B]", afternoon: "bg-[#50B848]", evening: "bg-[#367639]", night: "bg-[#434345]" };
+            const labels: any = { 
+              morning: "صبح (۶:۰۰ تا ۱۲:۰۰)", 
+              afternoon: "ظهر/عصر (۱۲:۰۰ تا ۱۸:۰۰)", 
+              evening: "شب (۱۸:۰۰ تا ۲۴:۰۰)", 
+              night: "نیمه‌شب (۲۴:۰۰ تا ۶:۰۰)" 
+            };
+            const colors: any = { 
+              morning: "bg-[#9FD18B]", 
+              afternoon: "bg-[#50B848]", 
+              evening: "bg-[#367639]", 
+              night: "bg-[#434345]" 
+            };
             const percentage = totalActivity > 0 ? (value / totalActivity) * 100 : 0;
             
             return (
