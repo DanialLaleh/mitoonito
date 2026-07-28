@@ -1,92 +1,58 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { revalidatePath } from "next/cache";
 
-function normalizeString(value: FormDataEntryValue | null) {
-  if (typeof value !== "string") return "";
-  return value.trim();
-}
-
-export async function createTaskAction(formData: FormData) {
+export async function createTask(formData: FormData) {
   const user = await getCurrentUser();
   if (!user) throw new Error("Unauthorized");
 
-  const title = normalizeString(formData.get("title"));
-  const areaId = normalizeString(formData.get("areaId"));
-  const dateStr = normalizeString(formData.get("date")); // YYYY-MM-DD
-  const timeStr = normalizeString(formData.get("time")); // HH:mm
-
-  if (!title) throw new Error("عنوان تسک اجباری است");
-
-  // ترکیب تاریخ و ساعت برای ثبت زمان دقیق
-  let taskDate = new Date(); // پیش‌فرض امروز
-  if (dateStr) {
-    const [year, month, day] = dateStr.split("-").map(Number);
-    taskDate.setFullYear(year, month - 1, day);
-  }
-  
-  if (timeStr) {
-    const [hours, minutes] = timeStr.split(":").map(Number);
-    taskDate.setHours(hours, minutes, 0, 0);
-  }
-
-  if (areaId) {
-    const area = await prisma.area.findFirst({
-      where: { id: areaId, userId: user.id },
-    });
-    if (!area) throw new Error("حوزه انتخاب شده معتبر نیست");
-  }
+  const title = formData.get("title") as string;
+  const description = formData.get("description") as string;
+  const dueDateStr = formData.get("dueDate") as string; // فرمت: YYYY-MM-DD
+  const points = parseInt(formData.get("points") as string) || 15;
 
   await prisma.task.create({
     data: {
       userId: user.id,
       title,
-      areaId: areaId || null,
+      description,
+      points,
+      dueDate: dueDateStr ? new Date(dueDateStr) : null,
       isCompleted: false,
-      date: taskDate,
-      // اگر کاربر ساعتی وارد کرده باشد، فرض می‌کنیم کار در همان لحظه انجام شده (برای تسک‌های گذشته)
-      completedAt: timeStr ? taskDate : null,
     },
   });
 
-  revalidatePath("/app/today");
+  revalidatePath("/app/tasks");
   revalidatePath("/app/dashboard");
 }
 
-export async function toggleTaskAction(formData: FormData) {
+export async function toggleTaskStatus(taskId: string, isCompleted: boolean) {
   const user = await getCurrentUser();
   if (!user) throw new Error("Unauthorized");
-
-  const taskId = normalizeString(formData.get("taskId"));
-  const isCompleted = formData.get("isCompleted") === "true";
-
-  if (!taskId) throw new Error("شناسه تسک اجباری است");
 
   await prisma.task.update({
     where: { id: taskId, userId: user.id },
-    data: { 
+    data: {
       isCompleted,
-      completedAt: isCompleted ? new Date() : null 
+      // اگر تکمیل شد، زمان دقیق همین الان ثبت شود (برای تحلیل ساعت طلایی)
+      completedAt: isCompleted ? new Date() : null,
     },
   });
 
-  revalidatePath("/app/today");
+  revalidatePath("/app/tasks");
   revalidatePath("/app/dashboard");
 }
 
-export async function deleteTaskAction(formData: FormData) {
+export async function deleteTask(taskId: string) {
   const user = await getCurrentUser();
   if (!user) throw new Error("Unauthorized");
-
-  const taskId = normalizeString(formData.get("taskId"));
-  if (!taskId) throw new Error("شناسه تسک اجباری است");
 
   await prisma.task.delete({
     where: { id: taskId, userId: user.id },
   });
 
-  revalidatePath("/app/today");
+  revalidatePath("/app/tasks");
   revalidatePath("/app/dashboard");
 }
