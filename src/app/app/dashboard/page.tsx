@@ -1,44 +1,57 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/current-user";
+import Link from "next/link";
 
-// تابع کمکی برای فرمت‌دهی به اعداد مالی و امتیاز
+// تابع کمکی برای فرمت‌دهی به اعداد
 function formatNumber(num: number) {
   return new Intl.NumberFormat("fa-IR").format(num);
 }
 
-// محاسبه سطح کاربر بر اساس امتیاز
+// محاسبه سطح کاربر بر اساس امتیاز - منطق پیشرفته‌تر
 function getLevelInfo(score: number) {
-  if (score < 500) return { name: "نوپا 🛡️", color: "text-blue-500", bg: "bg-blue-50" };
-  if (score < 2000) return { name: "پویا ⚡", color: "text-[#50B848]", bg: "bg-[#50B848]/10" };
-  if (score < 5000) return { name: "پیشرو 🔥", color: "text-orange-500", bg: "bg-orange-50" };
-  return { name: "استاد بهره‌وری 🏆", color: "text-purple-600", bg: "bg-purple-50" };
+  if (score < 500) return { name: "نوپا 🛡️", color: "text-blue-600", bg: "bg-blue-50", next: 500 };
+  if (score < 2000) return { name: "پویا ⚡", color: "text-[#50B848]", bg: "bg-[#50B848]/10", next: 2000 };
+  if (score < 5000) return { name: "پیشرو 🔥", color: "text-orange-600", bg: "bg-orange-50", next: 5000 };
+  return { name: "استاد بهره‌وری 🏆", color: "text-purple-600", bg: "bg-purple-50", next: 10000 };
 }
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/auth/login");
 
-  // ۱. دریافت آمار تسک‌ها، اهداف و عادت‌ها
-  const [totalTasks, completedTasks, totalGoals, completedGoals, totalHabits, habitLogs] = await Promise.all([
+  // ۱. دریافت جامع آمار در یک درخواست (Performance Optimizing)
+  const [
+    totalTasks, 
+    completedTasks, 
+    totalGoals, 
+    completedGoals, 
+    habitLogsCount,
+    incomeRes,
+    expenseRes,
+    recentTransactions,
+    completedTasksWithTime
+  ] = await Promise.all([
     prisma.task.count({ where: { userId: user.id } }),
     prisma.task.count({ where: { userId: user.id, isCompleted: true } }),
     prisma.goal.count({ where: { userId: user.id } }),
     prisma.goal.count({ where: { userId: user.id, isCompleted: true } }),
-    prisma.habit.count({ where: { userId: user.id } }),
-    prisma.habitLog.findMany({ where: { habit: { userId: user.id } }, select: { loggedAt: true } }),
+    prisma.habitLog.count({ where: { habit: { userId: user.id } } }),
+    prisma.transaction.aggregate({ where: { userId: user.id, type: "INCOME" }, _sum: { amount: true } }),
+    prisma.transaction.aggregate({ where: { userId: user.id, type: "EXPENSE" }, _sum: { amount: true } }),
+    prisma.transaction.findMany({ where: { userId: user.id }, orderBy: { date: "desc" }, take: 4 }),
+    prisma.task.findMany({
+      where: { userId: user.id, isCompleted: true, completedAt: { not: null } },
+      select: { completedAt: true },
+    })
   ]);
 
-  // ۲. محاسبه امتیاز رشد (گیمیفیکیشن)
-  const totalGrowthScore = (completedTasks * 10) + (completedGoals * 100) + (habitLogs.length * 15);
+  // ۲. گیمیفیکیشن و سطح‌بندی
+  const totalGrowthScore = (completedTasks * 10) + (completedGoals * 100) + (habitLogsCount * 15);
   const level = getLevelInfo(totalGrowthScore);
+  const progressToNextLevel = Math.min((totalGrowthScore / level.next) * 100, 100);
 
-  // ۳. تحلیل ساعت طلایی (Golden Hour)
-  const completedTasksWithTime = await prisma.task.findMany({
-    where: { userId: user.id, isCompleted: true, completedAt: { not: null } },
-    select: { completedAt: true },
-  });
-
+  // ۳. تحلیل ساعت طلایی و توزیع فعالیت
   const hourCounts: Record<number, number> = {};
   completedTasksWithTime.forEach((t) => {
     if (t.completedAt) {
@@ -51,99 +64,101 @@ export default async function DashboardPage() {
     ? parseInt(Object.entries(hourCounts).reduce((a, b) => (a[1] > b[1] ? a : b))[0]) 
     : null;
 
-  // ۴. آمار مالی
-  const [incomeRes, expenseRes, transactions] = await Promise.all([
-    prisma.transaction.aggregate({ where: { userId: user.id, type: "INCOME" }, _sum: { amount: true } }),
-    prisma.transaction.aggregate({ where: { userId: user.id, type: "EXPENSE" }, _sum: { amount: true } }),
-    prisma.transaction.findMany({ where: { userId: user.id }, orderBy: { date: "desc" }, take: 4 }),
-  ]);
-
+  // ۴. محاسبات مالی
   const totalIncome = incomeRes._sum.amount || 0;
   const totalExpense = expenseRes._sum.amount || 0;
   const balance = totalIncome - totalExpense;
 
   return (
-    <div className="max-w-md mx-auto px-4 py-8 pb-28 text-right" dir="rtl">
-      {/* هدر و سطح کاربر */}
-      <div className="flex justify-between items-start mb-8">
+    <div className="max-w-md mx-auto px-5 py-10 pb-32 text-right" dir="rtl">
+      {/* پروفایل و وضعیت سطح */}
+      <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-2xl font-black text-[#434345]">سلام دانیال 👋</h1>
-          <p className="text-xs text-gray-500 mt-1">بیا امروز هم قدمی برای اهدافت برداری.</p>
+          <h1 className="text-2xl font-black text-brand-charcoal">سلام دانیال 👋</h1>
+          <p className="text-xs text-gray-500 mt-1">امروز برای مارکتینگ میتونی‌تو چه ایده‌ای داری؟</p>
         </div>
-        <div className={`${level.bg} ${level.color} px-4 py-2 rounded-2xl border border-current/20 text-center`}>
-          <span className="block text-[10px] font-bold opacity-70">سطح فعلی</span>
+        <div className={`${level.bg} ${level.color} px-4 py-2 rounded-2xl border border-current/10 flex flex-col items-center`}>
+          <span className="text-[9px] font-bold uppercase tracking-wider opacity-60">Level</span>
           <span className="text-sm font-black">{level.name}</span>
         </div>
       </div>
 
-      {/* امتیاز کلی رشد (Hero Card) */}
-      <div className="bg-[#434345] text-white rounded-[2rem] p-6 mb-8 shadow-xl shadow-gray-200 relative overflow-hidden">
+      {/* کارت امتیاز مرکزی (Growth Hero) */}
+      <div className="bg-brand-charcoal text-white rounded-[2.5rem] p-7 mb-8 shadow-2xl shadow-gray-300 relative overflow-hidden">
         <div className="relative z-10">
-          <span className="text-xs font-medium opacity-70">امتیاز کل رشد شما</span>
-          <div className="text-4xl font-black mt-1 mb-4">{formatNumber(totalGrowthScore)}</div>
-          <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden">
+          <div className="flex justify-between items-end mb-4">
+            <div>
+              <span className="text-xs font-medium opacity-60">امتیاز کل رشد</span>
+              <div className="text-5xl font-black mt-1 leading-none">{formatNumber(totalGrowthScore)}</div>
+            </div>
+            <div className="text-left text-[10px] font-bold text-brand-lightGreen bg-white/10 px-2 py-1 rounded-lg">
+              {formatNumber(level.next - totalGrowthScore)} امتیاز تا سطح بعد
+            </div>
+          </div>
+          
+          <div className="h-3 w-full bg-white/10 rounded-full overflow-hidden mb-2">
             <div 
-              className="h-full bg-[#9FD18B]" 
-              style={{ width: `${Math.min((totalGrowthScore % 500) / 5, 100)}%` }}
+              className="h-full bg-brand-green transition-all duration-1000" 
+              style={{ width: `${progressToNextLevel}%` }}
             ></div>
           </div>
-          <p className="text-[10px] mt-2 opacity-60 text-left">تا سطح بعدی: {formatNumber(500 - (totalGrowthScore % 500))} امتیاز</p>
         </div>
-        {/* المان تزیینی پشت‌زمینه */}
-        <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-[#50B848] opacity-20 blur-3xl rounded-full"></div>
+        {/* المان گرافیکی پس‌زمینه */}
+        <div className="absolute top-[-20%] left-[-10%] w-40 h-40 bg-brand-green/20 blur-[60px] rounded-full"></div>
       </div>
 
-      {/* ساعت طلایی */}
-      <div className="bg-gradient-to-l from-[#9FD18B]/20 to-transparent border-r-4 border-[#50B848] p-4 mb-8 rounded-l-2xl">
-        <h3 className="text-xs font-black text-[#367639] mb-1">💡 تحلیل ساعت طلایی</h3>
+      {/* بخش تحلیل ساعت طلایی (Insight) */}
+      <div className="bg-white border-2 border-brand-gray/30 p-5 mb-8 rounded-[2rem] shadow-sm">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-2 h-2 rounded-full bg-brand-green animate-pulse"></div>
+          <h3 className="text-xs font-black text-brand-charcoal">تحلیل ساعت طلایی دانیال</h3>
+        </div>
         {goldenHour !== null ? (
-          <p className="text-[11px] text-gray-600 leading-5">
-            دانیال، دیتای تو نشان می‌دهد بازه ساعت <span className="font-bold text-[#367639]">{goldenHour}:۰۰</span> زمان اوج عملکرد توست. کارهای استراتژیک مارکتینگ را برای این ساعت رزرو کن!
-          </p>
+          <div className="flex gap-4 items-center">
+            <div className="bg-brand-lightGreen/20 text-brand-darkGreen text-xl p-3 rounded-2xl font-black">
+              {goldenHour}:۰۰
+            </div>
+            <p className="text-[11px] text-gray-600 leading-5">
+              بیشترین بازدهی تو در این ساعت ثبت شده. کارهای سنگین فیتنس یا ایده‌پردازی مارکتینگ رو به این ساعت منتقل کن.
+            </p>
+          </div>
         ) : (
-          <p className="text-[11px] text-gray-500">با ثبت اولین فعالیت‌ها، ساعت طلایی تو اینجا ظاهر می‌شود.</p>
+          <p className="text-[11px] text-gray-400">دیتای کافی برای تحلیل وجود ندارد. فعالیت‌های بیشتری ثبت کن!</p>
         )}
       </div>
 
-      {/* ویجت‌های سریع */}
+      {/* ویجت‌های آماری سریع */}
       <div className="grid grid-cols-2 gap-4 mb-8">
-        <div className="bg-white border border-[#E6E7E8] p-4 rounded-3xl">
-          <span className="text-[10px] font-bold text-gray-400 block mb-1 font-mono">FINANCE</span>
-          <span className={`text-sm font-black ${balance >= 0 ? 'text-[#367639]' : 'text-red-500'}`}>
-            {formatNumber(balance)} <small className="text-[10px] font-normal">تومان</small>
+        <Link href="/app/finance" className="bg-white border border-brand-gray p-5 rounded-[2rem] active:scale-95 transition-transform">
+          <span className="text-[10px] font-bold text-gray-400 block mb-1">تراز مالی</span>
+          <span className={`text-lg font-black ${balance >= 0 ? 'text-brand-darkGreen' : 'text-red-500'}`}>
+            {formatNumber(balance)} <small className="text-[10px] font-normal mr-1">تومان</small>
           </span>
-        </div>
-        <div className="bg-white border border-[#E6E7E8] p-4 rounded-3xl">
-          <span className="text-[10px] font-bold text-gray-400 block mb-1">TASKS</span>
-          <span className="text-sm font-black text-[#434345]">
-            {completedTasks} <small className="text-gray-400 font-normal">از {totalTasks}</small>
+        </Link>
+        <Link href="/app/tasks" className="bg-white border border-brand-gray p-5 rounded-[2rem] active:scale-95 transition-transform">
+          <span className="text-[10px] font-bold text-gray-400 block mb-1">وضعیت تسک‌ها</span>
+          <span className="text-lg font-black text-brand-charcoal">
+            {completedTasks} <small className="text-gray-400 font-normal mr-1">از {totalTasks}</small>
           </span>
-        </div>
+        </Link>
       </div>
 
-      {/* تراکنش‌های اخیر */}
-      <div className="space-y-3">
-        <div className="flex justify-between items-center px-1">
-          <h3 className="text-sm font-black text-[#434345]">آخرین تراکنش‌ها</h3>
-          <a href="/app/finance" className="text-[10px] font-bold text-[#50B848]">مشاهده همه ←</a>
-        </div>
-        {transactions.map((t) => (
-          <div key={t.id} className="bg-white border border-[#E6E7E8] p-3 rounded-2xl flex justify-between items-center">
-            <div className="flex items-center gap-3">
-              <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs ${t.type === 'INCOME' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
-                {t.type === 'INCOME' ? '📥' : '📤'}
-              </div>
-              <div>
-                <p className="text-xs font-bold text-[#434345]">{t.category}</p>
-                <p className="text-[9px] text-gray-400">{t.description || 'بدون توضیح'}</p>
-              </div>
-            </div>
-            <span className={`text-xs font-mono font-bold ${t.type === 'INCOME' ? 'text-[#50B848]' : 'text-red-500'}`}>
-              {t.type === 'INCOME' ? '+' : '-'}{formatNumber(t.amount)}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+      {/* لیست تراکنش‌های اخیر */}
+      <div className="space-y-4">
+        <div className="flex justify-between items-center px-2">
+          <h3 className="text-sm font-black text-brand-charcoal">تراکنش‌های اخیر</h3>
+          <Link href="/app/finance" className="text-[11px] font-bold text-brand-green bg-brand-green/10 px-3 py-1 rounded-full">
+            همه
+          </Link>
+        </
+        
+        <div className="space-y-3">
+          {recentTransactions.length > 0 ? (
+            recentTransactions.map((t) => (
+              <div key={t.id} className="bg-white border border-brand-gray/50 p-4 rounded-2xl flex justify-between items-center shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg ${t.type === 'INCOME' ? 'bg-green-50' : 'bg-red-50'}`}>
+                    {t.type === 'INCOME' ? '💰' : '🛒'}
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-brand-charcoal">{t.category}</p>
