@@ -21,7 +21,7 @@ model HabitLog {
 
   // روابط
   habitId   String
-  habit     Habit    @relation(fields: [habitId], references: [habitId], onDelete: Cascade)
+  habit     Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
 
   @@unique([habitId, date]) // جلوگیری از ثبت تکراری یک عادت در یک روز مشخص
 }
