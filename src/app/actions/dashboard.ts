@@ -1,7 +1,7 @@
-// src/app/actions/dashboard.ts
+// src/app/actions/dashboard.ts (نسخه ارتقا یافته با سیستم اهداف)
 "use server"
 
-import { prisma } from "@/lib/prisma"; // دقت کن که نام ایمپورت پریزما در پروژه تو چیست (معمولا prisma یا db)
+import { prisma } from "@/lib/prisma";
 import { subDays, getHours } from "date-fns";
 
 export async function getDashboardAnalytics(userId: string) {
@@ -30,19 +30,27 @@ export async function getDashboardAnalytics(userId: string) {
       where: { userId },
     });
 
+    // ۴. دریافت اهداف کاربر به همراه تسک‌های متصل به هر هدف
+    const goals = await prisma.goal.findMany({
+      where: { userId, isCompleted: false },
+      include: {
+        tasks: true,
+      },
+    });
+
     const hourDistribution = { morning: 0, afternoon: 0, evening: 0, night: 0 };
     let completedTasksCount = 0;
 
     tasks.forEach(task => {
       if (task.isCompleted) {
         completedTasksCount++;
-        // چون هنوز فیلد completedAt را در دیتابیس نداری، فعلاً از همان فیلد date استفاده می‌کنیم
-        // بعد از Migration دیتابیس، این خط را به task.completedAt تغییر بده
-        const hour = getHours(new Date(task.date)); 
-        if (hour >= 6 && hour < 12) hourDistribution.morning++;
-        else if (hour >= 12 && hour < 18) hourDistribution.afternoon++;
-        else if (hour >= 18 && hour < 24) hourDistribution.evening++;
-        else hourDistribution.night++;
+        if (task.completedAt) {
+          const hour = getHours(new Date(task.completedAt));
+          if (hour >= 6 && hour < 12) hourDistribution.morning++;
+          else if (hour >= 12 && hour < 18) hourDistribution.afternoon++;
+          else if (hour >= 18 && hour < 24) hourDistribution.evening++;
+          else hourDistribution.night++;
+        }
       }
     });
 
@@ -77,6 +85,24 @@ export async function getDashboardAnalytics(userId: string) {
       else if (t.type === "expense") totalExpense += t.amount;
     });
 
+    // ۵. محاسبه درصد پیشرفت هر هدف
+    const goalsProgress = goals.map(goal => {
+      const totalGoalTasks = goal.tasks.length;
+      const completedGoalTasks = goal.tasks.filter(t => t.isCompleted).length;
+      const progressPercentage = totalGoalTasks > 0 
+        ? Math.round((completedGoalTasks / totalGoalTasks) * 100) 
+        : 0;
+
+      return {
+        id: goal.id,
+        title: goal.title,
+        progress: progressPercentage,
+        totalTasks: totalGoalTasks,
+        completedTasks: completedGoalTasks,
+      };
+    });
+
+    // امتیازدهی پویای بهره‌وری
     const productivityScore = (completedTasksCount * 100) + (habitLogs.length * 50);
 
     return {
@@ -91,6 +117,7 @@ export async function getDashboardAnalytics(userId: string) {
         totalExpense,
         balance: totalIncome - totalExpense,
         productivityScore,
+        goalsProgress, // ارسال اطلاعات پیشرفت اهداف
       }
     };
   } catch (error) {
