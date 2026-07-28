@@ -1,34 +1,27 @@
-model Goal {
-  id          String   @id @default(cuid())
-  title       String
-  description String?
-  targetDate  DateTime?
-  isCompleted Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+model Habit {
+  id           String     @id @default(cuid())
+  title        String
+  description  String?
+  frequency    String     @default("daily") // daily, weekly, etc.
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 
   // روابط
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tasks       Task[]   // یک هدف می‌تواند شامل چندین تسک باشد
-  areaId      String?
-  area        Area?    @relation(fields: [areaId], references: [id], onDelete: SetNull)
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  logs         HabitLog[] // لاگ‌های انجام این عادت در روزهای مختلف
+  areaId       String?
+  area         Area?      @relation(fields: [areaId], references: [id], onDelete: SetNull)
 }
 
-model Task {
-  id          String    @id @default(cuid())
-  title       String
-  date        DateTime  // تاریخ برنامه ریزی شده
-  isCompleted Boolean   @default(false)
-  completedAt DateTime? // زمان دقیق تیک خوردن تسک (۲۴ ساعته)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+model HabitLog {
+  id        String   @id @default(cuid())
+  date      DateTime // تاریخی که عادت در آن انجام شده (می‌تواند گذشته یا امروز باشد)
+  createdAt DateTime @default(now())
 
   // روابط
-  userId      String
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  goalId      String?   // تسک می‌تواند اختیاری به یک هدف متصل باشد
-  goal        Goal?     @relation(fields: [goalId], references: [id], onDelete: SetNull)
-  areaId      String?
-  area        Area?     @relation(fields: [areaId], references: [id], onDelete: SetNull)
+  habitId   String
+  habit     Habit    @relation(fields: [habitId], references: [habitId], onDelete: Cascade)
+
+  @@unique([habitId, date]) // جلوگیری از ثبت تکراری یک عادت در یک روز مشخص
 }
