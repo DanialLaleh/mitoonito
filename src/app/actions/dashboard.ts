@@ -1,4 +1,3 @@
-// src/app/actions/dashboard.ts
 "use server";
 
 import { prisma } from "@/lib/prisma";
@@ -28,7 +27,7 @@ type HabitSummary = {
 
 function getTimeSlotLabel(hourDistribution: ActivityDistribution) {
   let goldenTimeSlot = "نامشخص";
-  let maxActivity = 0;
+  let maxActivity = -1;
 
   const slots = [
     { name: "صبح (۶ تا ۱۲)", val: hourDistribution.morning },
@@ -38,7 +37,7 @@ function getTimeSlotLabel(hourDistribution: ActivityDistribution) {
   ];
 
   for (const slot of slots) {
-    if (slot.val > maxActivity) {
+    if (slot.val > maxActivity && slot.val > 0) {
       maxActivity = slot.val;
       goldenTimeSlot = slot.name;
     }
@@ -111,8 +110,10 @@ export async function getDashboardAnalytics(userId: string) {
 
       completedTasksCount++;
 
-      if (task.completedAt) {
-        const hour = getHours(new Date(task.completedAt));
+      // استفاده از completedAt یا تاریخ ثبت کار در صورت نبود زمان دقیق ثبت
+      const completionDate = task.completedAt ? new Date(task.completedAt) : (task.date ? new Date(task.date) : null);
+      if (completionDate) {
+        const hour = getHours(completionDate);
 
         if (hour >= 6 && hour < 12) hourDistribution.morning++;
         else if (hour >= 12 && hour < 18) hourDistribution.afternoon++;
@@ -135,8 +136,13 @@ export async function getDashboardAnalytics(userId: string) {
     let totalExpense = 0;
 
     for (const transaction of transactions) {
-      if (transaction.type === "income") totalIncome += transaction.amount;
-      if (transaction.type === "expense") totalExpense += transaction.amount;
+      // اصلاح تایپ‌ها به حروف بزرگ برای تطبیق با دیتابیس پروژه
+      if (transaction.type === "INCOME" || (transaction.type as string) === "income") {
+        totalIncome += transaction.amount;
+      }
+      if (transaction.type === "EXPENSE" || (transaction.type as string) === "expense") {
+        totalExpense += transaction.amount;
+      }
     }
 
     const goalsProgress: GoalProgress[] = goals.map((goal) => {
@@ -180,12 +186,11 @@ export async function getDashboardAnalytics(userId: string) {
         ? Math.round((completedHabitLogsCount / (activeHabitsCount * 7)) * 100)
         : 0;
 
-    // امتیازدهی ترکیبی برای داشبورد
+    // فرمول گیمیفیکیشن شخصی‌سازی شده برای دانیال
     const productivityScore =
       completedTasksCount * 100 +
       completedHabitLogsCount * 50 +
-      goalsProgress.reduce((sum, goal) => sum + goal.progress, 0) +
-      Math.max(0, totalIncome - totalExpense) / 1000;
+      goalsProgress.reduce((sum, goal) => sum + goal.progress, 0) * 10;
 
     return {
       success: true,
@@ -208,6 +213,6 @@ export async function getDashboardAnalytics(userId: string) {
     };
   } catch (error) {
     console.error("Dashboard Error:", error);
-    return { success: false, error: "خطا در دریافت اطلاعات" };
+    return { success: false, error: "خطا در دریافت اطلاعات داشبورد" };
   }
 }
