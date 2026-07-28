@@ -4,28 +4,25 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { revalidatePath } from "next/cache";
 
-export async function createTask(formData: FormData) {
+// یکپارچه‌سازی متدها برای جلوگیری از تکرار کد
+export async function createTask(data: { title: string; description?: string; dueDate?: Date; areaId?: string; points?: number }) {
   const user = await getCurrentUser();
   if (!user) throw new Error("Unauthorized");
 
-  const title = formData.get("title") as string;
-  const description = formData.get("description") as string;
-  const dueDateStr = formData.get("dueDate") as string; // فرمت: YYYY-MM-DD
-  const points = parseInt(formData.get("points") as string) || 15;
-
-  await prisma.task.create({
+  const task = await prisma.task.create({
     data: {
       userId: user.id,
-      title,
-      description,
-      points,
-      dueDate: dueDateStr ? new Date(dueDateStr) : null,
-      isCompleted: false,
+      title: data.title,
+      description: data.description,
+      dueDate: data.dueDate || new Date(), // پیش‌فرض امروز
+      points: data.points || 15,
+      // اگر areaId در آینده اضافه شد، اینجا قابل گسترش است
     },
   });
 
-  revalidatePath("/app/tasks");
+  revalidatePath("/app/today");
   revalidatePath("/app/dashboard");
+  return task;
 }
 
 export async function toggleTaskStatus(taskId: string, isCompleted: boolean) {
@@ -36,12 +33,11 @@ export async function toggleTaskStatus(taskId: string, isCompleted: boolean) {
     where: { id: taskId, userId: user.id },
     data: {
       isCompleted,
-      // اگر تکمیل شد، زمان دقیق همین الان ثبت شود (برای تحلیل ساعت طلایی)
-      completedAt: isCompleted ? new Date() : null,
+      completedAt: isCompleted ? new Date() : null, // ثبت زمان دقیق برای تحلیل ساعت طلایی
     },
   });
 
-  revalidatePath("/app/tasks");
+  revalidatePath("/app/today");
   revalidatePath("/app/dashboard");
 }
 
@@ -53,6 +49,6 @@ export async function deleteTask(taskId: string) {
     where: { id: taskId, userId: user.id },
   });
 
-  revalidatePath("/app/tasks");
+  revalidatePath("/app/today");
   revalidatePath("/app/dashboard");
 }
