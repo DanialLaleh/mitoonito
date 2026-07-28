@@ -1,27 +1,55 @@
+// ۱. تنظیمات اتصال به دیتابیس
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ۲. تنظیمات کلاینت پریزما
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ۳. مدل‌های دیتابیس
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String?
+  habits    Habit[]
+  areas     Area[]
+  createdAt DateTime @default(now())
+}
+
+model Area {
+  id        String   @id @default(cuid())
+  name      String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  habits    Habit[]
+}
+
 model Habit {
   id           String     @id @default(cuid())
   title        String
   description  String?
-  frequency    String     @default("daily") // daily, weekly, etc.
+  frequency    String     @default("daily")
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 
-  // روابط
   userId       String
   user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  logs         HabitLog[] // لاگ‌های انجام این عادت در روزهای مختلف
+  logs         HabitLog[]
   areaId       String?
   area         Area?      @relation(fields: [areaId], references: [id], onDelete: SetNull)
 }
 
 model HabitLog {
   id        String   @id @default(cuid())
-  date      DateTime // تاریخی که عادت در آن انجام شده (می‌تواند گذشته یا امروز باشد)
+  date      DateTime
   createdAt DateTime @default(now())
 
-  // روابط
   habitId   String
   habit     Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
 
-  @@unique([habitId, date]) // جلوگیری از ثبت تکراری یک عادت در یک روز مشخص
+  @@unique([habitId, date])
 }
