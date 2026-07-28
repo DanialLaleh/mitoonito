@@ -2,13 +2,26 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import Link from "next/link";
+import { 
+  TrendingUp, 
+  CheckCircle2, 
+  PiggyBank, 
+  ArrowUpRight, 
+  ArrowDownLeft, 
+  Clock, 
+  Zap, 
+  Trophy 
+} from "lucide-react";
+
+// غیرفعال کردن کش برای بارگذاری دقیق داده‌های لحظه‌ای دیتابیس
+export const dynamic = "force-dynamic";
 
 // تابع کمکی برای فرمت‌دهی به اعداد
 function formatNumber(num: number) {
   return new Intl.NumberFormat("fa-IR").format(num);
 }
 
-// محاسبه سطح کاربر بر اساس امتیاز - منطق پیشرفته‌تر
+// محاسبه سطح کاربر بر اساس امتیاز - منطق گیمیفیکیشن میتونی‌تو
 function getLevelInfo(score: number) {
   if (score < 500) return { name: "نوپا 🛡️", color: "text-blue-600", bg: "bg-blue-50", next: 500 };
   if (score < 2000) return { name: "پویا ⚡", color: "text-[#50B848]", bg: "bg-[#50B848]/10", next: 2000 };
@@ -70,52 +83,56 @@ export default async function DashboardPage() {
   const balance = totalIncome - totalExpense;
 
   return (
-    <div className="max-w-md mx-auto px-5 py-10 pb-32 text-right" dir="rtl">
+    <div className="max-w-md mx-auto px-5 py-8 pb-32 text-right" dir="rtl">
       {/* پروفایل و وضعیت سطح */}
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-2xl font-black text-brand-charcoal">سلام دانیال 👋</h1>
+          <h1 className="text-2xl font-black text-[#434345]">سلام دانیال 👋</h1>
           <p className="text-xs text-gray-500 mt-1">امروز برای مارکتینگ میتونی‌تو چه ایده‌ای داری؟</p>
         </div>
-        <div className={`${level.bg} ${level.color} px-4 py-2 rounded-2xl border border-current/10 flex flex-col items-center`}>
+        <div className={`${level.bg} ${level.color} px-4 py-2 rounded-2xl border border-current/10 flex flex-col items-center shadow-sm`}>
           <span className="text-[9px] font-bold uppercase tracking-wider opacity-60">Level</span>
           <span className="text-sm font-black">{level.name}</span>
         </div>
       </div>
 
       {/* کارت امتیاز مرکزی (Growth Hero) */}
-      <div className="bg-brand-charcoal text-white rounded-[2.5rem] p-7 mb-8 shadow-2xl shadow-gray-300 relative overflow-hidden">
+      <div className="bg-[#434345] text-white rounded-[2.5rem] p-7 mb-8 shadow-xl shadow-gray-200 relative overflow-hidden">
         <div className="relative z-10">
           <div className="flex justify-between items-end mb-4">
             <div>
               <span className="text-xs font-medium opacity-60">امتیاز کل رشد</span>
               <div className="text-5xl font-black mt-1 leading-none">{formatNumber(totalGrowthScore)}</div>
             </div>
-            <div className="text-left text-[10px] font-bold text-brand-lightGreen bg-white/10 px-2 py-1 rounded-lg">
-              {formatNumber(level.next - totalGrowthScore)} امتیاز تا سطح بعد
+            <div className="text-left text-[10px] font-bold text-[#9FD18B] bg-white/10 px-2 py-1 rounded-lg">
+              {formatNumber(Math.max(0, level.next - totalGrowthScore))} امتیاز تا سطح بعد
             </div>
           </div>
           
           <div className="h-3 w-full bg-white/10 rounded-full overflow-hidden mb-2">
             <div 
-              className="h-full bg-brand-green transition-all duration-1000" 
+              className="h-full bg-[#50B848] transition-all duration-1000" 
               style={{ width: `${progressToNextLevel}%` }}
             ></div>
           </div>
         </div>
         {/* المان گرافیکی پس‌زمینه */}
-        <div className="absolute top-[-20%] left-[-10%] w-40 h-40 bg-brand-green/20 blur-[60px] rounded-full"></div>
+        <div className="absolute top-[-20%] left-[-10%] w-40 h-40 bg-[#50B848]/20 blur-[60px] rounded-full"></div>
       </div>
 
       {/* بخش تحلیل ساعت طلایی (Insight) */}
-      <div className="bg-white border-2 border-brand-gray/30 p-5 mb-8 rounded-[2rem] shadow-sm">
+      <div className="bg-white border border-gray-100 p-5 mb-8 rounded-[2rem] shadow-sm">
         <div className="flex items-center gap-2 mb-3">
-          <div className="w-2 h-2 rounded-full bg-brand-green animate-pulse"></div>
-          <h3 className="text-xs font-black text-brand-charcoal">تحلیل ساعت طلایی دانیال</h3>
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#50B848] opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-[#50B848]"></span>
+          </span>
+          <h3 className="text-xs font-black text-[#434345]">تحلیل ساعت طلایی دانیال</h3>
         </div>
         {goldenHour !== null ? (
           <div className="flex gap-4 items-center">
-            <div className="bg-brand-lightGreen/20 text-brand-darkGreen text-xl p-3 rounded-2xl font-black">
+            <div className="bg-[#50B848]/10 text-[#367639] text-xl p-3 rounded-2xl font-black flex items-center justify-center gap-1 min-w-[70px]">
+              <Clock size={16} />
               {goldenHour}:۰۰
             </div>
             <p className="text-[11px] text-gray-600 leading-5">
@@ -129,36 +146,70 @@ export default async function DashboardPage() {
 
       {/* ویجت‌های آماری سریع */}
       <div className="grid grid-cols-2 gap-4 mb-8">
-        <Link href="/app/finance" className="bg-white border border-brand-gray p-5 rounded-[2rem] active:scale-95 transition-transform">
-          <span className="text-[10px] font-bold text-gray-400 block mb-1">تراز مالی</span>
-          <span className={`text-lg font-black ${balance >= 0 ? 'text-brand-darkGreen' : 'text-red-500'}`}>
-            {formatNumber(balance)} <small className="text-[10px] font-normal mr-1">تومان</small>
-          </span>
+        <Link href="/app/finance" className="bg-white border border-gray-100 p-5 rounded-[2rem] active:scale-95 transition-transform shadow-sm flex flex-col justify-between">
+          <div>
+            <span className="text-[10px] font-bold text-gray-400 block mb-1">تراز مالی</span>
+            <span className={`text-lg font-black ${balance >= 0 ? 'text-[#367639]' : 'text-red-500'}`}>
+              {formatNumber(balance)} <small className="text-[10px] font-normal mr-1">تومان</small>
+            </span>
+          </div>
+          <div className="flex justify-end mt-3 text-gray-400">
+            <PiggyBank size={18} />
+          </div>
         </Link>
-        <Link href="/app/tasks" className="bg-white border border-brand-gray p-5 rounded-[2rem] active:scale-95 transition-transform">
-          <span className="text-[10px] font-bold text-gray-400 block mb-1">وضعیت تسک‌ها</span>
-          <span className="text-lg font-black text-brand-charcoal">
-            {completedTasks} <small className="text-gray-400 font-normal mr-1">از {totalTasks}</small>
-          </span>
+        
+        <Link href="/app/tasks" className="bg-white border border-gray-100 p-5 rounded-[2rem] active:scale-95 transition-transform shadow-sm flex flex-col justify-between">
+          <div>
+            <span className="text-[10px] font-bold text-gray-400 block mb-1">وضعیت تسک‌ها</span>
+            <span className="text-lg font-black text-[#434345]">
+              {completedTasks} <small className="text-gray-400 font-normal mr-1">از {totalTasks}</small>
+            </span>
+          </div>
+          <div className="flex justify-end mt-3 text-gray-400">
+            <CheckCircle2 size={18} />
+          </div>
         </Link>
       </div>
 
       {/* لیست تراکنش‌های اخیر */}
       <div className="space-y-4">
         <div className="flex justify-between items-center px-2">
-          <h3 className="text-sm font-black text-brand-charcoal">تراکنش‌های اخیر</h3>
-          <Link href="/app/finance" className="text-[11px] font-bold text-brand-green bg-brand-green/10 px-3 py-1 rounded-full">
-            همه
+          <h3 className="text-sm font-black text-[#434345]">تراکنش‌های اخیر</h3>
+          <Link href="/app/finance" className="text-[11px] font-bold text-[#50B848] bg-[#50B848]/10 px-3 py-1 rounded-full hover:bg-[#50B848]/20 transition-colors">
+            مدیریت مالی
           </Link>
-        </
+        </div>
         
         <div className="space-y-3">
           {recentTransactions.length > 0 ? (
             recentTransactions.map((t) => (
-              <div key={t.id} className="bg-white border border-brand-gray/50 p-4 rounded-2xl flex justify-between items-center shadow-sm">
+              <div key={t.id} className="bg-white border border-gray-100 p-4 rounded-2xl flex justify-between items-center shadow-sm">
                 <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg ${t.type === 'INCOME' ? 'bg-green-50' : 'bg-red-50'}`}>
-                    {t.type === 'INCOME' ? '💰' : '🛒'}
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg ${
+                    t.type === 'INCOME' ? 'bg-[#50B848]/10 text-[#367639]' : 'bg-red-50 text-red-500'
+                  }`}>
+                    {t.type === 'INCOME' ? <ArrowDownLeft size={20} /> : <ArrowUpRight size={20} />}
                   </div>
                   <div>
-                    <p className="text-xs font-bold text-brand-charcoal">{t.category}</p>
+                    <p className="text-xs font-bold text-[#434345]">{t.description || t.category}</p>
+                    <p className="text-[9px] text-gray-400 mt-0.5">{t.category}</p>
+                  </div>
+                </div>
+                <div className="text-left">
+                  <span className={`text-xs font-black ${t.type === 'INCOME' ? 'text-[#367639]' : 'text-red-500'}`}>
+                    {t.type === 'INCOME' ? '+' : '-'}{formatNumber(t.amount)}
+                  </span>
+                  <span className="text-[8px] text-gray-400 block mt-0.5">تومان</span>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="bg-gray-50 border border-dashed border-gray-200 rounded-2xl p-6 text-center text-xs text-gray-400">
+              هنوز تراکنشی ثبت نکرده‌ای.
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
