@@ -1,129 +1,68 @@
+import { getHabitsOverview } from "@/app/actions/habits";
+import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/auth/current-user";
-import { AppShell } from "@/components/app/AppShell";
-import { planLimits } from "@/lib/design-tokens";
-import { createHabitAction, toggleHabitLogAction, deleteHabitAction } from "./actions";
+import HabitItem from "@/components/habits/HabitItem";
+import Link from "next/link";
 
 export default async function HabitsPage() {
-  const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  const session = await getSession();
+  if (!session || !session.userId) redirect("/login");
 
-  const [habits, habitCount] = await Promise.all([
-    prisma.habit.findMany({
-      where: { userId: user.id },
-      include: {
-        logs: true,
-      },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.habit.count({
-      where: { userId: user.id },
-    }),
-  ]);
-
-  const limit = planLimits[user.plan as keyof typeof planLimits]?.maxHabits ?? 0;
-
-  // مشخص کردن تاریخ امروز بدون زمان برای بررسی وضعیت انجام کار
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const result = await getHabitsOverview({ userId: session.userId as string });
+  const habits = result.success ? result.habits : [];
 
   return (
-    <AppShell>
-      <div className="space-y-6">
+    <div className="p-4 md:p-8 max-w-3xl mx-auto space-y-6 pb-24" dir="rtl">
+      {/* هدر */}
+      <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-dark-gray">عادت‌های من</h1>
-          <p className="text-sm text-dark-gray/70">
-            {habitCount} از {limit} عادت فعال تعریف شده است
-          </p>
+          <h1 className="text-2xl font-black text-[#434345]">عادت‌های من</h1>
+          <p className="text-gray-400 text-sm mt-1">نظم، کلید موفقیت دانیال است.</p>
         </div>
-
-        {/* فرم ثبت عادت جدید */}
-        <form
-          action={createHabitAction}
-          className="flex flex-col gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center"
+        <Link 
+          href="/app/habits/new" 
+          className="bg-[#434345] text-white p-3 rounded-2xl shadow-lg active:scale-95 transition-all"
         >
-          <input
-            name="title"
-            placeholder="چه عادتی رو می‌خوای بسازی؟ (مثلاً: ۳۰ دقیقه کتابخوانی)"
-            required
-            className="flex-1 rounded-xl border border-gray-200 px-4 py-3 outline-none transition focus:border-brand-green"
-          />
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+        </Link>
+      </div>
 
-          <select
-            name="frequency"
-            className="rounded-xl border border-gray-200 px-4 py-3 outline-none transition focus:border-brand-green"
-          >
-            <option value="DAILY">روزانه</option>
-            <option value="WEEKLY">هفتگی</option>
-          </select>
-
-          <button
-            type="submit"
-            className="rounded-xl bg-brand-green px-6 py-3 font-medium text-white transition hover:bg-brand-darkGreen"
-          >
-            ثبت عادت
-          </button>
-        </form>
-
-        {/* لیست عادت‌ها */}
-        {habits.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-8 text-center text-sm text-dark-gray/60">
-            هنوز عادتی ثبت نکرده‌ای. عادت‌های کوچک روزانه، نتایج بزرگ می‌سازند!
+      {/* بخش وضعیت کلی */}
+      <div className="grid grid-cols-2 gap-4">
+        <div className="bg-[#50B848] p-5 rounded-3xl text-white shadow-sm shadow-[#50B848]/20">
+          <span className="text-[10px] font-bold opacity-80 uppercase tracking-wider">کل عادت‌ها</span>
+          <div className="text-3xl font-black mt-1">{habits.length}</div>
+        </div>
+        <div className="bg-white p-5 rounded-3xl border border-[#E6E7E8] text-[#434345] shadow-sm">
+          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">میانگین پایبندی</span>
+          <div className="text-3xl font-black mt-1 text-[#50B848]">
+            {habits.length > 0 
+              ? Math.round(habits.reduce((acc: any, h: any) => acc + h.successRate, 0) / habits.length)
+              : 0}%
           </div>
+        </div>
+      </div>
+
+      {/* لیست عادت‌ها */}
+      <div className="space-y-3">
+        {habits.length > 0 ? (
+          habits.map((habit: any) => (
+            <HabitItem key={habit.id} habit={habit} userId={session.userId as string} />
+          ))
         ) : (
-          <div className="grid gap-3">
-            {habits.map((habit) => {
-              // بررسی اینکه آیا این عادت امروز انجام شده است یا خیر
-              const isDoneToday = habit.logs.some(
-                (log) => new Date(log.date).getTime() === today.getTime()
-              );
-
-              return (
-                <div
-                  key={habit.id}
-                  className="flex items-center justify-between rounded-2xl border border-gray-200 bg-white p-4 shadow-sm"
-                >
-                  <div className="flex items-center gap-3">
-                    {/* دکمه وضعیت انجام امروز */}
-                    <form action={toggleHabitLogAction}>
-                      <input type="hidden" name="habitId" value={habit.id} />
-                      <button
-                        type="submit"
-                        className={`h-10 px-4 rounded-xl text-xs font-semibold border flex items-center justify-center transition-all ${
-                          isDoneToday
-                            ? "bg-brand-green/10 text-brand-green border-brand-green/20"
-                            : "bg-gray-50 text-dark-gray hover:bg-gray-100 border-gray-200"
-                        }`}
-                      >
-                        {isDoneToday ? "✓ انجام شد" : "انجام امروز؟"}
-                      </button>
-                    </form>
-
-                    <div>
-                      <h3 className="font-semibold text-dark-gray">{habit.title}</h3>
-                      <p className="text-[10px] text-dark-gray/50 mt-0.5">
-                        بازه زمانی: {habit.frequency === "DAILY" ? "روزانه" : "هفتگی"} | دفعات ثبت شده: {habit.logs.length} بار
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* دکمه حذف عادت */}
-                  <form action={deleteHabitAction}>
-                    <input type="hidden" name="habitId" value={habit.id} />
-                    <button
-                      type="submit"
-                      className="text-red-500 hover:text-red-700 text-sm font-medium"
-                    >
-                      حذف
-                    </button>
-                  </form>
-                </div>
-              );
-            })}
+          <div className="text-center py-20 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
+            <div className="text-4xl mb-4 text-gray-300">🌿</div>
+            <p className="text-gray-400 text-sm">هنوز عادتی نساخته‌ای دانیال. <br/> برای شروع، اولین عادتت را اضافه کن.</p>
           </div>
         )}
       </div>
-    </AppShell>
+      
+      {/* پیام انگیزشی (Cynic Style) */}
+      <div className="bg-gray-100 p-4 rounded-2xl text-[11px] text-gray-500 text-center leading-relaxed italic">
+        "انگیزه چیزی است که تو را به حرکت وا می‌دارد، اما عادت چیزی است که تو را در مسیر نگه می‌دارد. البته اگر وسط راه خسته نشوی."
+      </div>
+    </div>
   );
 }
