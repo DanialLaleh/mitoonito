@@ -1,98 +1,15 @@
-// ۱. تنظیمات اتصال به دیتابیس
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-// ۲. تنظیمات کلاینت پریزما
 generator client {
   provider = "prisma-client-js"
 }
 
-// ۳. مدل‌های دیتابیس
-
-model User {
-  id           String        @id @default(cuid())
-  email        String        @unique
-  password     String
-  name         String?
-  createdAt    DateTime      @default(now())
-  
-  // روابط
-  areas        Area[]
-  habits       Habit[]
-  goals        Goal[]
-  tasks        Task[]
-  transactions Transaction[]
-}
-
-model Area {
-  id        String   @id @default(cuid())
-  name      String
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  habits    Habit[]
-  goals     Goal[]
-}
-
-model Goal {
-  id          String    @id @default(cuid())
-  title       String
-  description String?
-  isCompleted Boolean   @default(false)
-  deadline    DateTime?
-  createdAt   DateTime  @default(now())
-
-  userId      String
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  areaId      String?
-  area        Area?     @relation(fields: [areaId], references: [id], onDelete: SetNull)
-  
-  tasks       Task[]
-}
-
-model Habit {
-  id           String     @id @default(cuid())
-  title        String
-  description  String?
-  frequency    String     @default("daily")
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-
-  userId       String
-  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  areaId       String?
-  area         Area?      @relation(fields: [areaId], references: [id], onDelete: SetNull)
-  
-  logs         HabitLog[]
-}
-
-model HabitLog {
-  id        String   @id @default(cuid())
-  loggedAt  DateTime // زمان انجام عادت
-  createdAt DateTime @default(now())
-
-  habitId   String
-  habit     Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
-
-  @@unique([habitId, loggedAt])
-}
-
-model Task {
-  id          String    @id @default(cuid())
-  title       String
-  isCompleted Boolean   @default(false)
-  date        DateTime  @default(now()) // روزی که تسک برای آن برنامه‌ریزی شده
-  completedAt DateTime? // زمان دقیق تیک خوردن تسک (برای تحلیل ساعت طلایی)
-  createdAt   DateTime  @default(now())
-
-  userId      String
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  goalId      String?
-  goal        Goal?     @relation(fields: [goalId], references: [id], onDelete: SetNull)
+enum PlanTier {
+  FREE
+  PREMIUM
 }
 
 enum TransactionType {
@@ -100,15 +17,113 @@ enum TransactionType {
   EXPENSE
 }
 
+enum ReminderMethod {
+  PUSH
+  SMS
+  EMAIL
+}
+
+enum ReminderFrequency {
+  ONCE
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+model User {
+  id            String        @id @default(cuid())
+  email         String?       @unique
+  phoneNumber   String?       @unique
+  password      String?
+  name          String?
+  avatarUrl     String?
+  plan          PlanTier      @default(FREE)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  
+  // Relations
+  habits        Habit[]
+  tasks         Task[]
+  transactions  Transaction[]
+  reminders     Reminder[]
+}
+
+model Habit {
+  id          String       @id @default(cuid())
+  userId      String
+  title       String
+  description String?
+  points      Int          @default(10)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  // Relations
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  logs        HabitLog[]
+  reminders   Reminder[]
+}
+
+model HabitLog {
+  id        String   @id @default(cuid())
+  habitId   String
+  loggedAt  DateTime @default(now())
+  pointsEarned Int   @default(10)
+
+  // Relations
+  habit     Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
+
+  @@unique([habitId, loggedAt])
+}
+
+model Task {
+  id          String    @id @default(cuid())
+  userId      String
+  title       String
+  description String?
+  dueDate     DateTime?
+  isCompleted Boolean   @default(false)
+  points      Int       @default(15)
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reminders   Reminder[]
+}
+
 model Transaction {
   id          String          @id @default(cuid())
+  userId      String
   amount      Float
   type        TransactionType
-  category    String          // مثلاً: حقوق، اجاره، تفریح
+  category    String
   description String?
   date        DateTime        @default(now())
   createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
 
-  userId      String
+  // Relations
   user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Reminder {
+  id          String            @id @default(cuid())
+  userId      String
+  habitId     String?
+  taskId      String?
+  title       String
+  message     String?
+  time        String            // زمان یادآور به فرمت HH:MM (مثال: "08:30")
+  frequency   ReminderFrequency @default(DAILY)
+  method      ReminderMethod    @default(PUSH)
+  isActive    Boolean           @default(true)
+  nextRun     DateTime?         // زمان اجرای بعدی یادآور
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  // Relations
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  habit       Habit?            @relation(fields: [habitId], references: [id], onDelete: Cascade)
+  task        Task?             @relation(fields: [taskId], references: [id], onDelete: Cascade)
 }
