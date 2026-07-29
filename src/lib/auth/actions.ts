@@ -1,124 +1,53 @@
 "use server";
 
-import { redirect } from "next/navigation";
+import { hashPassword, verifyPassword } from "./password";
 import { prisma } from "@/lib/prisma";
-import { hashPassword, verifyPassword } from "@/lib/auth/password";
-import {
-  clearSessionCookie,
-  createSessionToken,
-  setSessionCookie,
-} from "@/lib/auth/session";
-import { loginSchema, registerSchema } from "@/lib/validations/auth";
+import { createSession } from "./session";
+import { redirect } from "next/navigation";
 
-export type AuthActionState = {
-  ok: boolean;
-  message?: string;
-  fieldErrors?: Record<string, string[] | undefined>;
-};
+export async function registerAction(formData: FormData) {
+  const email = String(formData.get("email") || "");
+  const password = String(formData.get("password") || "");
+  const name = String(formData.get("name") || "");
 
-export async function registerAction(
-  _prev: AuthActionState,
-  formData: FormData,
-): Promise<AuthActionState> {
-  const parsed = registerSchema.safeParse({
-    name: formData.get("name"),
-    email: formData.get("email"),
-    password: formData.get("password"),
-  });
+  if (!email || !password) throw new Error("ایمیل و رمز عبور الزامی است");
 
-  if (!parsed.success) {
-    return {
-      ok: false,
-      message: "اطلاعات وارد شده معتبر نیست.",
-      fieldErrors: parsed.error.flatten().fieldErrors,
-    };
-  }
+  const hashedPassword = await hashPassword(password);
 
-  const { name, email, password } = parsed.data;
-
-  try {
-    const existing = await prisma.user.findUnique({ where: { email } });
-    if (existing) {
-      return { ok: false, message: "این ایمیل قبلاً ثبت شده است." };
-    }
-
-    const passwordHash = await hashPassword(password);
-
-    const user = await prisma.user.create({
-      data: {
-        name,
-        email,
-        password: passwordHash,
-        plan: "plus",
+  const user = await prisma.user.create({
+    data: {
+      email,
+      password: hashedPassword,
+      name,
+      plan: "FREE",
+      // ایجاد بخش‌های پیش‌فرض برای کاربر جدید
+      areas: {
+        create: [
+          { name: "شخصی", icon: "user", sortOrder: 1 },
+          { name: "کاری", icon: "briefcase", sortOrder: 2 },
+          { name: "سلامتی", icon: "heart", sortOrder: 3 },
+        ],
       },
-      select: { id: true, email: true, plan: true },
-    });
-
-    const { token, maxAge } = await createSessionToken({
-      sub: user.id,
-      email: user.email,
-      plan: user.plan,
-    });
-    await setSessionCookie(token, maxAge);
-  } catch (err) {
-    console.error("registerAction error:", err);
-    return {
-      ok: false,
-      message: "ثبت‌نام انجام نشد. اتصال دیتابیس و JWT_SECRET را بررسی کنید.",
-    };
-  }
-
-  redirect("/app/today");
-}
-
-export async function loginAction(
-  _prev: AuthActionState,
-  formData: FormData,
-): Promise<AuthActionState> {
-  const parsed = loginSchema.safeParse({
-    email: formData.get("email"),
-    password: formData.get("password"),
+    },
   });
 
-  if (!parsed.success) {
-    return {
-      ok: false,
-      message: "ایمیل یا رمز عبور معتبر نیست.",
-      fieldErrors: parsed.error.flatten().fieldErrors,
-    };
-  }
-
-  const { email, password } = parsed.data;
-
-  try {
-    const user = await prisma.user.findUnique({ where: { email } });
-    if (!user || !user.password) {
-      return { ok: false, message: "ایمیل یا رمز عبور اشتباه است." };
-    }
-
-    const valid = await verifyPassword(password, user.password);
-    if (!valid) {
-      return { ok: false, message: "ایمیل یا رمز عبور اشتباه است." };
-    }
-
-    const { token, maxAge } = await createSessionToken({
-      sub: user.id,
-      email: user.email,
-      plan: user.plan,
-    });
-    await setSessionCookie(token, maxAge);
-  } catch (err) {
-    console.error("loginAction error:", err);
-    return {
-      ok: false,
-      message: "ورود انجام نشد. اتصال دیتابیس و JWT_SECRET را بررسی کنید.",
-    };
-  }
-
-  redirect("/app/today");
+  await createSession(user.id);
+  redirect("/app/dashboard");
 }
 
-export async function logoutAction() {
-  await clearSessionCookie();
-  redirect("/login");
+export async function loginAction(formData: FormData) {
+  const email = String(formData.get("email") || "");
+  const password = String(formData.get("password") || "");
+
+  const user = await prisma.user.findUnique({ where: { email } });
+
+  if (!user || !user.password) {
+    throw new Error("کاربری با این مشخصات یافت نشد");
+  }
+
+  const isValid = await verifyPassword(password, user.password);
+  if (!isValid) throw new Error("رمز عبور اشتباه است");
+
+  await createSession(user.id);
+  redirect("/app/dashboard");
 }
