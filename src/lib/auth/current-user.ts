@@ -1,28 +1,21 @@
 import { prisma } from "@/lib/prisma";
-import { getSession } from "@/lib/auth/session";
+import { getSession } from "./session";
 
 export async function getCurrentUser() {
   const session = await getSession();
-  if (!session) return null;
 
-  const user = await prisma.user.findUnique({
+  if (!session?.sub) return null;
+
+  return prisma.user.findUnique({
     where: { id: session.sub },
     select: {
       id: true,
       email: true,
       name: true,
+      avatarUrl: true,
       plan: true,
       createdAt: true,
+      updatedAt: true,
     },
   });
-
-  return user;
-}
-
-export async function requireUser() {
-  const user = await getCurrentUser();
-  if (!user) {
-    return null;
-  }
-  return user;
 }
