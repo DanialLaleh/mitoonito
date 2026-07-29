@@ -49,7 +49,7 @@ export async function registerAction(
       data: {
         name,
         email,
-        passwordHash,
+        password: passwordHash,,
         plan: "FREE",
         areas: {
           create: defaultAreas.map((area, index) => ({
