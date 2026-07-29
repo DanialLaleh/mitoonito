@@ -1,16 +1,47 @@
+"use server";
+
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { hashPassword, verifyPassword } from "./password";
+import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import {
+  clearSessionCookie,
   createSessionToken,
   setSessionCookie,
-  clearSessionCookie,
-} from "./session";
+} from "@/lib/auth/session";
+import { loginSchema, registerSchema } from "@/lib/validations/auth";
 
-export async function registerAction(formData: FormData) {
+export type AuthActionState = {
+  ok: boolean;
+  message?: string;
+  fieldErrors?: Record<string, string[] | undefined>;
+};
+
+export async function registerAction(
+  _prev: AuthActionState,
+  formData: FormData,
+): Promise<AuthActionState> {
+  const parsed = registerSchema.safeParse({
+    name: formData.get("name"),
+    email: formData.get("email"),
+    password: formData.get("password"),
+  });
+
+  if (!parsed.success) {
+    return {
+      ok: false,
+      message: "اطلاعات وارد شده معتبر نیست.",
+      fieldErrors: parsed.error.flatten().fieldErrors,
+    };
+  }
+
+  const { name, email, password } = parsed.data;
+
   try {
-    const name = String(formData.get("name") || "").trim();
-    const email = String(formData.get("email") || "").trim().toLowerCase();
-    const password = String(formData.get("password") || "");
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      return { ok: false, message: "این ایمیل قبلاً ثبت شده است." };
+    }
+
     const passwordHash = await hashPassword(password);
 
     const user = await prisma.user.create({
@@ -18,45 +49,49 @@ export async function registerAction(formData: FormData) {
         name,
         email,
         password: passwordHash,
-        plan: "FREE",
+        plan: "plus",
       },
-      select: {
-        id: true,
-        email: true,
-        plan: true,
-      },
+      select: { id: true, email: true, plan: true },
     });
 
-    const token = await createSessionToken({
+    const { token, maxAge } = await createSessionToken({
       sub: user.id,
       email: user.email,
       plan: user.plan,
     });
-
-    setSessionCookie(token);
-
-    return { ok: true };
-  } catch (error) {
-    console.error("registerAction error:", error);
-    return { ok: false, message: "خطا در ثبت‌نام" };
+    await setSessionCookie(token, maxAge);
+  } catch (err) {
+    console.error("registerAction error:", err);
+    return {
+      ok: false,
+      message: "ثبت‌نام انجام نشد. اتصال دیتابیس و JWT_SECRET را بررسی کنید.",
+    };
   }
+
+  redirect("/app/today");
 }
 
-export async function loginAction(formData: FormData) {
+export async function loginAction(
+  _prev: AuthActionState,
+  formData: FormData,
+): Promise<AuthActionState> {
+  const parsed = loginSchema.safeParse({
+    email: formData.get("email"),
+    password: formData.get("password"),
+  });
+
+  if (!parsed.success) {
+    return {
+      ok: false,
+      message: "ایمیل یا رمز عبور معتبر نیست.",
+      fieldErrors: parsed.error.flatten().fieldErrors,
+    };
+  }
+
+  const { email, password } = parsed.data;
+
   try {
-    const email = String(formData.get("email") || "").trim().toLowerCase();
-    const password = String(formData.get("password") || "");
-
-    const user = await prisma.user.findUnique({
-      where: { email },
-      select: {
-        id: true,
-        email: true,
-        plan: true,
-        password: true,
-      },
-    });
-
+    const user = await prisma.user.findUnique({ where: { email } });
     if (!user || !user.password) {
       return { ok: false, message: "ایمیل یا رمز عبور اشتباه است." };
     }
@@ -66,21 +101,24 @@ export async function loginAction(formData: FormData) {
       return { ok: false, message: "ایمیل یا رمز عبور اشتباه است." };
     }
 
-    const token = await createSessionToken({
+    const { token, maxAge } = await createSessionToken({
       sub: user.id,
       email: user.email,
       plan: user.plan,
     });
-
-    setSessionCookie(token);
-
-    return { ok: true };
-  } catch (error) {
-    console.error("loginAction error:", error);
-    return { ok: false, message: "خطا در ورود" };
+    await setSessionCookie(token, maxAge);
+  } catch (err) {
+    console.error("loginAction error:", err);
+    return {
+      ok: false,
+      message: "ورود انجام نشد. اتصال دیتابیس و JWT_SECRET را بررسی کنید.",
+    };
   }
+
+  redirect("/app/today");
 }
 
 export async function logoutAction() {
-  clearSessionCookie();
+  await clearSessionCookie();
+  redirect("/login");
 }
