@@ -12,7 +12,6 @@ export async function getCurrentUser() {
       email: true,
       name: true,
       plan: true,
-      planExpires: true,
       createdAt: true,
     },
   });
