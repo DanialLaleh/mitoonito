@@ -1,43 +1,31 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { defaultAreas } from "@/lib/design-tokens";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
-import {
-  clearSessionCookie,
-  createSessionToken,
-  setSessionCookie,
-} from "@/lib/auth/session";
-import { loginSchema, registerSchema } from "@/lib/validations/auth";
+import { createSessionToken, setSessionCookie, deleteSessionCookie } from "@/lib/auth/session";
+import { registerSchema, loginSchema } from "@/lib/validations/auth";
+import { z } from "zod";
 
-export type AuthActionState = {
+export type AuthActionResult = {
   ok: boolean;
   message?: string;
-  fieldErrors?: Record<string, string[] | undefined>;
 };
 
-export async function registerAction(
-  _prev: AuthActionState,
-  formData: FormData,
-): Promise<AuthActionState> {
-  const parsed = registerSchema.safeParse({
-    name: formData.get("name"),
-    email: formData.get("email"),
-    password: formData.get("password"),
-  });
-
-  if (!parsed.success) {
-    return {
-      ok: false,
-      message: "اطلاعات وارد شده معتبر نیست.",
-      fieldErrors: parsed.error.flatten().fieldErrors,
-    };
-  }
-
-  const { name, email, password } = parsed.data;
-
+export async function registerAction(_: AuthActionResult, formData: FormData): Promise<AuthActionResult> {
   try {
+    const raw = {
+      name: formData.get("name"),
+      email: formData.get("email"),
+      password: formData.get("password"),
+    };
+
+    const parsed = registerSchema.safeParse(raw);
+    if (!parsed.success) {
+      return { ok: false, message: "اطلاعات ثبت‌نام معتبر نیست." };
+    }
+
+    const { name, email, password } = parsed.data;
+
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
       return { ok: false, message: "این ایمیل قبلاً ثبت شده است." };
@@ -49,74 +37,76 @@ export async function registerAction(
       data: {
         name,
         email,
-        password: passwordHash,,
+        password: passwordHash,
         plan: "FREE",
         areas: {
-          create: defaultAreas.map((area, index) => ({
-            title: area.title,
-            icon: area.icon,
-            sortOrder: index,
-            color: "#50B848",
-          })),
+          create: [{ title: "شخصی" }, { title: "کار" }, { title: "مالی" }],
         },
       },
-      select: { id: true, email: true, plan: true },
+      select: {
+        id: true,
+        email: true,
+        plan: true,
+      },
     });
 
     const { token, maxAge } = await createSessionToken({
       sub: user.id,
-      email: user.email,
+      email: user.email ?? email,
       plan: user.plan,
     });
+
     await setSessionCookie(token, maxAge);
+
+    return { ok: true, message: "ثبت‌نام با موفقیت انجام شد." };
   } catch (err) {
     console.error("registerAction error:", err);
     return {
       ok: false,
-      message:
-        "ثبت‌نام انجام نشد. اتصال دیتابیس و JWT_SECRET را بررسی کنید.",
+      message: "ثبت‌نام انجام نشد. اتصال دیتابیس و JWT_SECRET را بررسی کنید.",
     };
   }
-
-  redirect("/app/today");
 }
 
-export async function loginAction(
-  _prev: AuthActionState,
-  formData: FormData,
-): Promise<AuthActionState> {
-  const parsed = loginSchema.safeParse({
-    email: formData.get("email"),
-    password: formData.get("password"),
-  });
-
-  if (!parsed.success) {
-    return {
-      ok: false,
-      message: "ایمیل یا رمز عبور معتبر نیست.",
-      fieldErrors: parsed.error.flatten().fieldErrors,
-    };
-  }
-
-  const { email, password } = parsed.data;
-
+export async function loginAction(_: AuthActionResult, formData: FormData): Promise<AuthActionResult> {
   try {
+    const raw = {
+      email: formData.get("email"),
+      password: formData.get("password"),
+    };
+
+    const parsed = loginSchema.safeParse(raw);
+    if (!parsed.success) {
+      return { ok: false, message: "اطلاعات ورود معتبر نیست." };
+    }
+
+    const { email, password } = parsed.data;
+
     const user = await prisma.user.findUnique({ where: { email } });
+
     if (!user) {
       return { ok: false, message: "ایمیل یا رمز عبور اشتباه است." };
     }
 
-    const valid = await verifyPassword(password, user.passwordHash);
+    if (!user.password) {
+      return { ok: false, message: "ایمیل یا رمز عبور اشتباه است." };
+    }
+
+    const valid = await verifyPassword(password, user.password);
+
     if (!valid) {
       return { ok: false, message: "ایمیل یا رمز عبور اشتباه است." };
     }
 
     const { token, maxAge } = await createSessionToken({
       sub: user.id,
-      email: user.email,
+      email: user.email ?? email,
       plan: user.plan,
     });
+
     await setSessionCookie(token, maxAge);
+
+    return { ok: true, message: "ورود با موفقیت انجام شد." };
   } catch (err) {
     console.error("loginAction error:", err);
     return {
@@ -124,11 +114,8 @@ export async function loginAction(
       message: "ورود انجام نشد. اتصال دیتابیس و JWT_SECRET را بررسی کنید.",
     };
   }
-
-  redirect("/app/today");
 }
 
-export async function logoutAction() {
-  await clearSessionCookie();
-  redirect("/login");
+export async function logoutAction(): Promise<void> {
+  await deleteSessionCookie();
 }
