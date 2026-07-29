@@ -19,19 +19,16 @@ export async function createSessionToken(payload: SessionPayload) {
 }
 
 export async function getSession(): Promise<SessionPayload | null> {
-  const token = cookies().get(COOKIE_NAME)?.value;
+  // تغییر: استفاده از await برای cookies
+  const cookieStore = await cookies();
+  const token = cookieStore.get(COOKIE_NAME)?.value;
   if (!token) return null;
 
   try {
     const { payload } = await jwtVerify(token, secret);
-    const sub = payload.sub;
-    const email = payload.email;
-
-    if (!sub || typeof email !== "string") return null;
-
     return {
-      sub,
-      email,
+      sub: payload.sub as string,
+      email: payload.email as string,
     };
   } catch {
     return null;
@@ -39,7 +36,9 @@ export async function getSession(): Promise<SessionPayload | null> {
 }
 
 export async function setSessionCookie(token: string) {
-  cookies().set(COOKIE_NAME, token, {
+  // تغییر: استفاده از await برای cookies
+  const cookieStore = await cookies();
+  cookieStore.set(COOKIE_NAME, token, {
     httpOnly: true,
     sameSite: "lax",
     path: "/",
@@ -49,7 +48,9 @@ export async function setSessionCookie(token: string) {
 }
 
 export async function clearSessionCookie() {
-  cookies().set(COOKIE_NAME, "", {
+  // تغییر: استفاده از await برای cookies
+  const cookieStore = await cookies();
+  cookieStore.set(COOKIE_NAME, "", {
     httpOnly: true,
     sameSite: "lax",
     path: "/",
