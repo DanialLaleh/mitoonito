@@ -5,194 +5,188 @@ import {
   createGoalAction,
   deleteGoalAction,
   toggleGoalCompletedAction,
-  createGoalTaskAction
+  createGoalTaskAction,
 } from "@/app/actions/goals";
+
+export const dynamic = "force-dynamic";
 
 export default async function GoalsPage() {
   const user = await getCurrentUser();
+
   if (!user) {
     redirect("/auth/login");
   }
 
-  // دریافت تمام اهداف کاربر همراه با تسک‌های متصل به هر هدف
   const goals = await prisma.goal.findMany({
     where: { userId: user.id },
     include: {
       tasks: {
-        orderBy: { date: "asc" },
+        orderBy: { dueDate: "asc" },
       },
     },
     orderBy: { createdAt: "desc" },
   });
 
   return (
-    <div className="max-w-md mx-auto px-4 py-6 pb-24 text-right" dir="rtl">
-      {/* هدر صفحه */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-[#434345]">اهداف من</h1>
-        <p className="text-xs text-gray-500 mt-1">توسعه فردی و برنامه‌های بلندمدت میتونی‌تو</p>
+    <div className="p-6 space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-[#434345]">اهداف</h1>
+        <p className="text-sm text-gray-500 mt-1">
+          اهداف بلندمدت و تسک‌های مرتبط با هر هدف را مدیریت کن.
+        </p>
       </div>
 
-      {/* فرم ایجاد هدف جدید */}
-      <div className="bg-white border border-[#E6E7E8] rounded-2xl p-4 mb-6 shadow-sm">
-        <h2 className="text-sm font-bold text-[#434345] mb-3">تعریف هدف جدید</h2>
-        <form action={createGoalAction} className="space-y-3">
+      <div className="grid gap-6">
+        <form action={createGoalAction} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-3">
           <div>
+            <label className="block text-sm font-medium text-[#434345] mb-1">عنوان هدف</label>
             <input
-              type="text"
               name="title"
-              placeholder="مثال: یادگیری Next.js یا کاهش وزن"
-              required
-              className="w-full px-3 py-2 text-sm border border-[#E6E7E8] rounded-xl focus:outline-none focus:ring-1 focus:ring-[#50B848]"
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-[#50B848]"
+              placeholder="مثلاً: یادگیری React"
             />
           </div>
           <div>
+            <label className="block text-sm font-medium text-[#434345] mb-1">توضیحات</label>
             <textarea
               name="description"
-              placeholder="توضیحات اختیاری درباره مسیر رسیدن به هدف..."
-              rows={2}
-              className="w-full px-3 py-2 text-sm border border-[#E6E7E8] rounded-xl focus:outline-none focus:ring-1 focus:ring-[#50B848] resize-none"
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-[#50B848] min-h-24"
+              placeholder="توضیحات اختیاری..."
             />
           </div>
           <button
             type="submit"
-            className="w-full bg-[#50B848] text-white py-2.5 rounded-xl text-sm font-bold active:scale-95 transition-transform"
+            className="rounded-xl bg-[#50B848] text-white px-4 py-3 font-medium hover:bg-[#367639] transition-colors"
           >
             ایجاد هدف
           </button>
         </form>
-      </div>
 
-      {/* لیست اهداف */}
-      <div className="space-y-4">
-        {goals.length === 0 ? (
-          <div className="text-center py-10 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
-            <p className="text-sm text-gray-400">هنوز هدفی تعریف نکرده‌ای دانیال!</p>
-          </div>
-        ) : (
-          goals.map((goal) => {
-            const completedTasksCount = goal.tasks.filter((t) => t.isCompleted).length;
-            const totalTasksCount = goal.tasks.length;
-            const progressPercent = totalTasksCount > 0 
-              ? Math.round((completedTasksCount / totalTasksCount) * 100) 
-              : 0;
+        <div className="space-y-4">
+          {goals.length === 0 ? (
+            <div className="rounded-2xl bg-white border border-gray-100 p-6 text-center text-gray-500">
+              هنوز هدفی ثبت نشده است.
+            </div>
+          ) : (
+            goals.map((goal) => {
+              const totalTasks = goal.tasks.length;
+              const completedTasks = goal.tasks.filter((task) => task.isCompleted).length;
+              const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
-            return (
-              <div
-                key={goal.id}
-                className="bg-white border border-[#E6E7E8] rounded-2xl p-4 shadow-sm space-y-4"
-              >
-                {/* بخش بالای کارت هدف */}
-                <div className="flex justify-between items-start gap-2">
-                  <div className="space-y-1 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`w-2.5 h-2.5 rounded-full ${
-                          goal.isCompleted ? "bg-[#50B848]" : "bg-yellow-500"
-                        }`}
-                      />
-                      <h3 className={`text-base font-bold text-[#434345] ${goal.isCompleted ? 'line-through text-gray-400' : ''}`}>
-                        {goal.title}
-                      </h3>
+              return (
+                <div key={goal.id} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h2 className="text-lg font-semibold text-[#434345]">{goal.title}</h2>
+                      {goal.description ? (
+                        <p className="text-sm text-gray-500 mt-1">{goal.description}</p>
+                      ) : null}
                     </div>
-                    {goal.description && (
-                      <p className="text-xs text-gray-500 mr-4 leading-relaxed">
-                        {goal.description}
-                      </p>
+
+                    <form action={toggleGoalCompletedAction}>
+                      <input type="hidden" name="goalId" value={goal.id} />
+                      <input type="hidden" name="isCompleted" value={String(!goal.isCompleted)} />
+                      <button
+                        type="submit"
+                        className={`rounded-xl px-3 py-2 text-sm font-medium ${
+                          goal.isCompleted
+                            ? "bg-green-100 text-green-700"
+                            : "bg-gray-100 text-gray-700"
+                        }`}
+                      >
+                        {goal.isCompleted ? "تکمیل شده" : "ناتمام"}
+                      </button>
+                    </form>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm text-gray-500">
+                      <span>پیشرفت</span>
+                      <span>{progress}%</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-[#50B848]"
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-medium text-[#434345]">تسک‌های هدف</h3>
+                    {goal.tasks.length === 0 ? (
+                      <p className="text-sm text-gray-500">هنوز تسکی برای این هدف ثبت نشده است.</p>
+                    ) : (
+                      <ul className="space-y-2">
+                        {goal.tasks.map((task) => (
+                          <li
+                            key={task.id}
+                            className="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3"
+                          >
+                            <div>
+                              <p className="text-sm font-medium text-[#434345]">{task.title}</p>
+                              {task.dueDate ? (
+                                <p className="text-xs text-gray-500">
+                                  موعد: {new Date(task.dueDate).toLocaleDateString("fa-IR")}
+                                </p>
+                              ) : null}
+                            </div>
+                            <span
+                              className={`text-xs px-2 py-1 rounded-full ${
+                                task.isCompleted
+                                  ? "bg-green-100 text-green-700"
+                                  : "bg-yellow-100 text-yellow-700"
+                              }`}
+                            >
+                              {task.isCompleted ? "انجام شده" : "در انتظار"}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
                     )}
                   </div>
 
-                  {/* کنترلرهای هدف */}
-                  <div className="flex items-center gap-1">
-                    <form action={toggleGoalCompletedAction}>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <form action={createGoalTaskAction} className="space-y-3">
                       <input type="hidden" name="goalId" value={goal.id} />
-                      <input type="hidden" name="isCompleted" value={goal.isCompleted ? "false" : "true"} />
+                      <input
+                        name="title"
+                        className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-[#50B848]"
+                        placeholder="تسک جدید"
+                      />
+                      <textarea
+                        name="description"
+                        className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-[#50B848] min-h-20"
+                        placeholder="توضیحات تسک"
+                      />
+                      <input
+                        type="datetime-local"
+                        name="date"
+                        className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-[#50B848]"
+                      />
                       <button
                         type="submit"
-                        className={`px-2 py-1 rounded-lg text-xs font-semibold transition-colors ${
-                          goal.isCompleted
-                            ? "bg-gray-100 text-gray-500 hover:bg-gray-200"
-                            : "bg-[#9FD18B]/20 text-[#367639] hover:bg-[#9FD18B]/40"
-                        }`}
+                        className="w-full rounded-xl bg-[#434345] text-white px-4 py-3 font-medium hover:bg-black transition-colors"
                       >
-                        {goal.isCompleted ? "بازگشایی" : "تکمیل"}
+                        افزودن تسک به هدف
                       </button>
                     </form>
 
-                    <form action={deleteGoalAction}>
+                    <form action={deleteGoalAction} className="flex items-end">
                       <input type="hidden" name="goalId" value={goal.id} />
                       <button
                         type="submit"
-                        className="p-1 text-red-500 hover:bg-red-50 rounded-lg text-xs"
+                        className="w-full rounded-xl bg-red-50 text-red-700 px-4 py-3 font-medium hover:bg-red-100 transition-colors"
                       >
-                        حذف
+                        حذف هدف
                       </button>
                     </form>
                   </div>
                 </div>
-
-                {/* پراگرس بار بر اساس تسک‌های هدف */}
-                <div className="space-y-1">
-                  <div className="flex justify-between items-center text-[10px] text-gray-400">
-                    <span>پیشرفت تسک‌ها</span>
-                    <span>{progressPercent}% ({completedTasksCount} از {totalTasksCount})</span>
-                  </div>
-                  <div className="w-full bg-[#E6E7E8] h-2 rounded-full overflow-hidden">
-                    <div
-                      className="bg-[#50B848] h-full transition-all duration-300"
-                      style={{ width: `${progressPercent}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* لیست تسک‌های این هدف */}
-                {totalTasksCount > 0 && (
-                  <div className="border-t border-gray-100 pt-3 space-y-2">
-                    <p className="text-xs font-bold text-gray-500 mb-2">تسک‌های متصل:</p>
-                    {goal.tasks.map((task) => (
-                      <div
-                        key={task.id}
-                        className="flex items-center justify-between bg-gray-50 p-2 rounded-lg text-xs"
-                      >
-                        <span className={task.isCompleted ? "line-through text-gray-400" : "text-[#434345]"}>
-                          {task.title}
-                        </span>
-                        <span className="text-[10px] text-gray-400">
-                          {new Date(task.date).toLocaleDateString("fa-IR")}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* فرم اضافه کردن تسک به صورت مستقیم به این هدف */}
-                <div className="border-t border-gray-100 pt-3">
-                  <form action={createGoalTaskAction} className="flex gap-2">
-                    <input type="hidden" name="goalId" value={goal.id} />
-                    <input
-                      type="text"
-                      name="title"
-                      placeholder="تسک جدید برای این هدف..."
-                      required
-                      className="flex-1 px-2.5 py-1.5 text-xs border border-[#E6E7E8] rounded-xl focus:outline-none focus:ring-1 focus:ring-[#50B848]"
-                    />
-                    <input
-                      type="date"
-                      name="date"
-                      className="px-1.5 py-1.5 text-xs border border-[#E6E7E8] rounded-xl focus:outline-none focus:ring-1 focus:ring-[#50B848] text-gray-500"
-                    />
-                    <button
-                      type="submit"
-                      className="bg-[#367639] text-white px-3 py-1.5 rounded-xl text-xs font-bold active:scale-95 transition-transform"
-                    >
-                      افزودن تسک
-                    </button>
-                  </form>
-                </div>
-              </div>
-            );
-          })
-        )}
+              );
+            })
+          )}
+        </div>
       </div>
     </div>
   );
