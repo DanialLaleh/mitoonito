@@ -1,8 +1,8 @@
 import { prisma } from "@/lib/prisma";
-import { getSession } from "@/lib/auth/session";
+import { getSessionFromCookie } from "@/lib/auth/session";
 
 export async function getCurrentUser() {
-  const session = await getSession();
+  const session = await getSessionFromCookie();
   if (!session) return null;
 
   const user = await prisma.user.findUnique({
@@ -16,13 +16,5 @@ export async function getCurrentUser() {
     },
   });
 
-  return user;
-}
-
-export async function requireUser() {
-  const user = await getCurrentUser();
-  if (!user) {
-    return null;
-  }
   return user;
 }
