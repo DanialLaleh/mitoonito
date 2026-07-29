@@ -28,18 +28,26 @@ type DashboardAnalytics = {
   habitSummaries: HabitSummary[];
 };
 
-export async function getDashboardAnalytics(userId: string): Promise<DashboardAnalytics> {
+export async function getDashboardAnalytics(
+  userId: string
+): Promise<DashboardAnalytics> {
   try {
     const today = new Date();
     const sevenDaysAgo = subDays(today, 7);
 
-    const [tasks, habitLogs, transactions, goals, habits] = await Promise.all([
+    const [
+      completedTasks,
+      habitLogs,
+      transactions,
+      goals,
+      habits,
+    ] = await Promise.all([
       prisma.task.findMany({
         where: {
           userId,
-          dueDate: { gte: sevenDaysAgo, lte: today },
+          isCompleted: true,
         },
-        orderBy: { dueDate: "asc" },
+        orderBy: { completedAt: "desc" },
       }),
 
       prisma.habitLog.findMany({
@@ -79,7 +87,7 @@ export async function getDashboardAnalytics(userId: string): Promise<DashboardAn
       }),
     ]);
 
-    const completedTasksCount = tasks.filter((task) => task.isCompleted).length;
+    const completedTasksCount = completedTasks.length;
     const completedHabitsCount = habitLogs.length;
 
     const incomeTotal = transactions
@@ -92,16 +100,9 @@ export async function getDashboardAnalytics(userId: string): Promise<DashboardAn
 
     const hourlyActivity: Record<number, number> = {};
 
-    tasks.forEach((task) => {
-      const completionDate = task.completedAt
-        ? new Date(task.completedAt)
-        : task.dueDate
-          ? new Date(task.dueDate)
-          : null;
-
-      if (!completionDate) return;
-
-      const hour = getHours(completionDate);
+    completedTasks.forEach((task) => {
+      if (!task.completedAt) return;
+      const hour = getHours(new Date(task.completedAt));
       hourlyActivity[hour] = (hourlyActivity[hour] || 0) + 1;
     });
 
@@ -112,7 +113,9 @@ export async function getDashboardAnalytics(userId: string): Promise<DashboardAn
 
     const goalsProgress: GoalProgress[] = goals.map((goal) => {
       const totalGoalTasks = goal.tasks.length;
-      const completedGoalTasks = goal.tasks.filter((task) => task.isCompleted).length;
+      const completedGoalTasks = goal.tasks.filter(
+        (task) => task.isCompleted
+      ).length;
 
       return {
         id: goal.id,
