@@ -5,7 +5,7 @@ import { loginAction, type AuthActionState } from "@/lib/auth/actions";
 
 const initial: AuthActionState = { ok: false };
 
-export function LoginForm() {
+export default function LoginForm() {
   const [state, formAction, pending] = useActionState(loginAction, initial);
 
   return (
@@ -20,6 +20,7 @@ export function LoginForm() {
         <label className="text-sm font-medium" htmlFor="email">
           ایمیل
         </label>
+
         <input
           id="email"
           name="email"
@@ -30,8 +31,11 @@ export function LoginForm() {
           disabled={pending}
           autoComplete="email"
         />
+
         {state.fieldErrors?.email?.[0] ? (
-          <p className="text-xs text-red-600">{state.fieldErrors.email[0]}</p>
+          <p className="text-xs text-red-600">
+            {state.fieldErrors.email[0]}
+          </p>
         ) : null}
       </div>
 
@@ -39,6 +43,7 @@ export function LoginForm() {
         <label className="text-sm font-medium" htmlFor="password">
           رمز عبور
         </label>
+
         <input
           id="password"
           name="password"
@@ -49,12 +54,19 @@ export function LoginForm() {
           disabled={pending}
           autoComplete="current-password"
         />
+
         {state.fieldErrors?.password?.[0] ? (
-          <p className="text-xs text-red-600">{state.fieldErrors.password[0]}</p>
+          <p className="text-xs text-red-600">
+            {state.fieldErrors.password[0]}
+          </p>
         ) : null}
       </div>
 
-      <button type="submit" className="btn-primary w-full" disabled={pending}>
+      <button
+        type="submit"
+        className="btn-primary w-full"
+        disabled={pending}
+      >
         {pending ? "در حال ورود..." : "ورود"}
       </button>
     </form>
