@@ -4,68 +4,69 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { revalidatePath } from "next/cache";
 
-export async function createGoal(formData: FormData) {
+export async function createGoalAction(formData: FormData) {
   const user = await getCurrentUser();
-  if (!user) throw new Error("Unauthorized");
+  if (!user) throw new Error("عدم دسترسی");
 
   const title = String(formData.get("title") || "").trim();
-  const description = String(formData.get("description") || "").trim();
   const targetRaw = String(formData.get("target") || "").trim();
-  const target = Number(targetRaw);
+  const currentRaw = String(formData.get("current") || "").trim();
+  const deadlineRaw = String(formData.get("deadline") || "").trim();
 
-  if (!title) {
-    throw new Error("Goal title is required");
+  if (!title) throw new Error("عنوان هدف الزامی است.");
+  if (!targetRaw) throw new Error("هدف کمی الزامی است.");
+
+  const target = Number(targetRaw);
+  const current = currentRaw ? Number(currentRaw) : 0;
+
+  if (Number.isNaN(target) || target <= 0) {
+    throw new Error("مقدار هدف باید عددی بزرگ‌تر از صفر باشد.");
   }
 
-  const goal = await prisma.goal.create({
+  await prisma.goal.create({
     data: {
-      userId: user.id,
       title,
-      description: description || null,
-      target: Number.isFinite(target) && target > 0 ? target : 100,
-      current: 0,
-    },
-  });
-
-  revalidatePath("/app/goals");
-  revalidatePath("/app/dashboard");
-
-  return goal;
-}
-
-export async function updateGoalProgress(goalId: string, current: number) {
-  const user = await getCurrentUser();
-  if (!user) throw new Error("Unauthorized");
-
-  const goal = await prisma.goal.update({
-    where: {
-      id: goalId,
-      userId: user.id,
-    },
-    data: {
-      current,
-    },
-  });
-
-  revalidatePath("/app/goals");
-  revalidatePath("/app/dashboard");
-
-  return goal;
-}
-
-export async function deleteGoal(goalId: string) {
-  const user = await getCurrentUser();
-  if (!user) throw new Error("Unauthorized");
-
-  const goal = await prisma.goal.delete({
-    where: {
-      id: goalId,
+      target,
+      current: Number.isNaN(current) ? 0 : current,
+      deadline: deadlineRaw ? new Date(deadlineRaw) : null,
       userId: user.id,
     },
   });
 
   revalidatePath("/app/goals");
   revalidatePath("/app/dashboard");
+}
 
-  return goal;
+export async function updateGoalAction(
+  goalId: string,
+  data: { title?: string; target?: number; current?: number; deadline?: Date | null }
+) {
+  const user = await getCurrentUser();
+  if (!user) throw new Error("عدم دسترسی");
+
+  await prisma.goal.updateMany({
+    where: {
+      id: goalId,
+      userId: user.id,
+    },
+    data,
+  });
+
+  revalidatePath("/app/goals");
+  revalidatePath("/app/dashboard");
+}
+
+export async function deleteGoalAction(goalId: string) {
+  const user = await getCurrentUser();
+  if (!user) throw new Error("عدم دسترسی");
+
+  await prisma.goal.deleteMany({
+    where: {
+      id: goalId,
+      userId: user.id,
+    },
+  });
+
+  revalidatePath("/app/goals");
+  revalidatePath("/app/dashboard");
 }
