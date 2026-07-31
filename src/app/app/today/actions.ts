@@ -1,21 +1,17 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/current-user";
-import { revalidatePath } from "next/cache";
 
-export async function toggleTaskDoneAction(formData: FormData) {
+export async function toggleTaskAction(formData: FormData) {
   const user = await getCurrentUser();
-  if (!user) throw new Error("Unauthorized");
+  if (!user) throw new Error("عدم دسترسی");
 
-  const taskId = String(formData.get("taskId") || "").trim();
-  const done = String(formData.get("done") || "").trim() === "true";
+  const taskId = formData.get("taskId") as string;
+  const done = formData.get("done") === "true";
 
-  if (!taskId) {
-    throw new Error("Task ID is required");
-  }
-
-  const task = await prisma.task.update({
+  await prisma.task.updateMany({
     where: {
       id: taskId,
       userId: user.id,
@@ -26,35 +22,27 @@ export async function toggleTaskDoneAction(formData: FormData) {
   });
 
   revalidatePath("/app/today");
-  revalidatePath("/app/tasks");
   revalidatePath("/app/dashboard");
-
-  return task;
 }
 
-export async function createTaskAction(formData: FormData) {
+export async function logHabitAction(formData: FormData) {
   const user = await getCurrentUser();
-  if (!user) throw new Error("Unauthorized");
+  if (!user) throw new Error("عدم دسترسی");
 
-  const title = String(formData.get("title") || "").trim();
-  const dueDateString = String(formData.get("dueDate") || "").trim();
+  const habitId = formData.get("habitId") as string;
 
-  if (!title) {
-    throw new Error("Task title is required");
-  }
-
-  const task = await prisma.task.create({
-    data: {
-      title,
-      dueDate: dueDateString ? new Date(dueDateString) : new Date(),
+  await prisma.habit.updateMany({
+    where: {
+      id: habitId,
       userId: user.id,
-      done: false,
+    },
+    data: {
+      streak: {
+        increment: 1,
+      },
     },
   });
 
   revalidatePath("/app/today");
-  revalidatePath("/app/tasks");
   revalidatePath("/app/dashboard");
-
-  return task;
 }
