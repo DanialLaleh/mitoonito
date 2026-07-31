@@ -4,59 +4,39 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { revalidatePath } from "next/cache";
 
-export async function createTask(formData: FormData) {
+export async function createTaskAction(formData: FormData) {
   const user = await getCurrentUser();
-  if (!user) throw new Error("Unauthorized");
+  if (!user) throw new Error("عدم دسترسی");
 
   const title = String(formData.get("title") || "").trim();
-  const dueDateString = String(formData.get("dueDate") || "").trim();
+  const dueDateRaw = String(formData.get("dueDate") || "").trim();
+  const areaId = String(formData.get("areaId") || "").trim() || null;
 
   if (!title) {
-    throw new Error("Task title is required");
+    throw new Error("عنوان وظیفه الزامی است.");
   }
 
-  const task = await prisma.task.create({
+  await prisma.task.create({
     data: {
       title,
-      dueDate: dueDateString ? new Date(dueDateString) : new Date(),
-      userId: user.id,
       done: false,
-    },
-  });
-
-  revalidatePath("/app/today");
-  revalidatePath("/app/tasks");
-  revalidatePath("/app/dashboard");
-
-  return task;
-}
-
-export async function toggleTaskDone(taskId: string, done: boolean) {
-  const user = await getCurrentUser();
-  if (!user) throw new Error("Unauthorized");
-
-  const task = await prisma.task.update({
-    where: {
-      id: taskId,
+      dueDate: dueDateRaw ? new Date(dueDateRaw) : null,
       userId: user.id,
-    },
-    data: {
-      done,
+      areaId,
     },
   });
 
   revalidatePath("/app/today");
-  revalidatePath("/app/tasks");
   revalidatePath("/app/dashboard");
-
-  return task;
+  revalidatePath("/app/goals");
+  revalidatePath("/app/areas");
 }
 
-export async function deleteTask(taskId: string) {
+export async function deleteTaskAction(taskId: string) {
   const user = await getCurrentUser();
-  if (!user) throw new Error("Unauthorized");
+  if (!user) throw new Error("عدم دسترسی");
 
-  const task = await prisma.task.delete({
+  await prisma.task.deleteMany({
     where: {
       id: taskId,
       userId: user.id,
@@ -64,8 +44,5 @@ export async function deleteTask(taskId: string) {
   });
 
   revalidatePath("/app/today");
-  revalidatePath("/app/tasks");
   revalidatePath("/app/dashboard");
-
-  return task;
 }
