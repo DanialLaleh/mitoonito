@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { subDays } from "date-fns";
+import dayjs from "dayjs";
 
 type GoalProgress = {
   id: string;
@@ -29,87 +29,91 @@ type DashboardAnalytics = {
 };
 
 export async function getDashboardAnalytics(
-  userId: string,
+  userId: string
 ): Promise<DashboardAnalytics> {
-  const today = new Date();
-  const sevenDaysAgo = subDays(today, 7);
+  try {
+    const today = dayjs().endOf("day").toDate();
+    const sevenDaysAgo = dayjs().subtract(7, "day").startOf("day").toDate();
 
-  const [tasks, transactions, goals, habits] = await Promise.all([
-    prisma.task.findMany({
-      where: {
-        userId,
-        dueDate: {
-          gte: sevenDaysAgo,
-          lte: today,
-        },
-      },
-      orderBy: { dueDate: "asc" },
-    }),
+    const [tasks, transactions, goals, habits] = await Promise.all([
+      prisma.task.findMany({
+        where: { userId },
+        orderBy: { createdAt: "desc" },
+      }),
 
-    prisma.transaction.findMany({
-      where: { userId },
-      orderBy: { createdAt: "asc" },
-    }),
+      prisma.transaction.findMany({
+        where: { userId },
+        orderBy: { createdAt: "asc" },
+      }),
 
-    prisma.goal.findMany({
-      where: { userId },
-      orderBy: { createdAt: "desc" },
-    }),
+      prisma.goal.findMany({
+        where: { userId },
+        orderBy: { createdAt: "desc" },
+      }),
 
-    prisma.habit.findMany({
-      where: { userId },
-      orderBy: { createdAt: "desc" },
-    }),
-  ]);
+      prisma.habit.findMany({
+        where: { userId },
+        orderBy: { createdAt: "desc" },
+      }),
+    ]);
 
-  const completedTasksCount = tasks.filter((task) => task.done).length;
+    const completedTasks = tasks.filter((task) => task.done);
 
-  const incomeTotal = transactions
-    .filter((transaction) => transaction.type.toUpperCase() === "INCOME")
-    .reduce((sum, transaction) => sum + transaction.amount, 0);
+    const completedTasksCount = completedTasks.length;
+    const completedHabitsCount = 0;
 
-  const expenseTotal = transactions
-    .filter((transaction) => transaction.type.toUpperCase() === "EXPENSE")
-    .reduce((sum, transaction) => sum + transaction.amount, 0);
+    const incomeTotal = transactions
+      .filter((transaction) => transaction.type === "INCOME")
+      .reduce((sum, transaction) => sum + transaction.amount, 0);
 
-  const hourlyActivity: Record<number, number> = {};
+    const expenseTotal = transactions
+      .filter((transaction) => transaction.type === "EXPENSE")
+      .reduce((sum, transaction) => sum + transaction.amount, 0);
 
-  for (const task of tasks) {
-    if (!task.done || !task.dueDate) continue;
+    const hourlyActivity: Record<number, number> = {};
 
-    const hour = task.dueDate.getHours();
-    hourlyActivity[hour] = (hourlyActivity[hour] ?? 0) + 1;
-  }
+    completedTasks.forEach((task) => {
+      const hour = dayjs(task.createdAt).hour();
+      hourlyActivity[hour] = (hourlyActivity[hour] || 0) + 1;
+    });
 
-  const goalsProgress: GoalProgress[] = goals.map((goal) => {
-    const progress =
-      goal.target > 0
-        ? Math.min(100, Math.round((goal.current / goal.target) * 100))
-        : 0;
+    const goalsProgress: GoalProgress[] = goals.map((goal) => {
+      const totalGoalTasks = 1;
+      const completedGoalTasks = goal.current >= goal.target ? 1 : 0;
+
+      return {
+        id: goal.id,
+        title: goal.title,
+        progress:
+          goal.target > 0
+            ? Math.min(100, Math.round((goal.current / goal.target) * 100))
+            : 0,
+        totalTasks: totalGoalTasks,
+        completedTasks: completedGoalTasks,
+      };
+    });
+
+    const habitSummaries: HabitSummary[] = habits.map((habit) => ({
+      id: habit.id,
+      title: habit.title,
+      totalLogs: 0,
+      points: habit.streak || 0,
+    }));
+
+    void today;
+    void sevenDaysAgo;
 
     return {
-      id: goal.id,
-      title: goal.title,
-      progress,
-      totalTasks: 0,
-      completedTasks: 0,
+      completedTasksCount,
+      completedHabitsCount,
+      incomeTotal,
+      expenseTotal,
+      hourlyActivity,
+      goalsProgress,
+      habitSummaries,
     };
-  });
-
-  const habitSummaries: HabitSummary[] = habits.map((habit) => ({
-    id: habit.id,
-    title: habit.title,
-    totalLogs: 0,
-    points: 0,
-  }));
-
-  return {
-    completedTasksCount,
-    completedHabitsCount: 0,
-    incomeTotal,
-    expenseTotal,
-    hourlyActivity,
-    goalsProgress,
-    habitSummaries,
-  };
+  } catch (error) {
+    console.error("Dashboard analytics error:", error);
+    throw new Error("خطا در دریافت آمار داشبورد.");
+  }
 }
