@@ -1,43 +1,60 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { revalidatePath } from "next/cache";
 
-export async function toggleTaskAction(formData: FormData) {
+export async function toggleTaskDoneAction(formData: FormData) {
   const user = await getCurrentUser();
-  if (!user) throw new Error("عدم دسترسی");
+  if (!user) throw new Error("Unauthorized");
 
-  const taskId = formData.get("taskId") as string;
-  const isCompleted = formData.get("isCompleted") === "true";
+  const taskId = String(formData.get("taskId") || "").trim();
+  const done = String(formData.get("done") || "").trim() === "true";
 
-  await prisma.task.update({
-    where: { id: taskId, userId: user.id },
-    data: { 
-      isCompleted,
-      completedAt: isCompleted ? new Date() : null 
+  if (!taskId) {
+    throw new Error("Task ID is required");
+  }
+
+  const task = await prisma.task.update({
+    where: {
+      id: taskId,
+      userId: user.id,
+    },
+    data: {
+      done,
     },
   });
 
   revalidatePath("/app/today");
+  revalidatePath("/app/tasks");
   revalidatePath("/app/dashboard");
+
+  return task;
 }
 
-export async function logHabitAction(formData: FormData) {
+export async function createTaskAction(formData: FormData) {
   const user = await getCurrentUser();
-  if (!user) throw new Error("عدم دسترسی");
+  if (!user) throw new Error("Unauthorized");
 
-  const habitId = formData.get("habitId") as string;
-  const habit = await prisma.habit.findUnique({ where: { id: habitId } });
+  const title = String(formData.get("title") || "").trim();
+  const dueDateString = String(formData.get("dueDate") || "").trim();
 
-  await prisma.habitLog.create({
+  if (!title) {
+    throw new Error("Task title is required");
+  }
+
+  const task = await prisma.task.create({
     data: {
-      habitId,
-      pointsEarned: habit?.points || 10,
-      loggedAt: new Date(),
+      title,
+      dueDate: dueDateString ? new Date(dueDateString) : new Date(),
+      userId: user.id,
+      done: false,
     },
   });
 
   revalidatePath("/app/today");
+  revalidatePath("/app/tasks");
   revalidatePath("/app/dashboard");
+
+  return task;
 }
