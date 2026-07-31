@@ -1,24 +1,29 @@
 // src/middleware.ts
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+import { NextResponse, type NextRequest } from "next/server";
 
 export function middleware(request: NextRequest) {
-  const token = request.cookies.get('mitoonito_session')?.value;
+  const token = request.cookies.get("mitoonito_session")?.value;
   const { pathname } = request.nextUrl;
 
-  // اگر توکن ندارد و می‌خواهد به مسیرهای خصوصی برود
-  if (!token && pathname.startsWith('/app')) {
-    return NextResponse.redirect(new URL('/login', request.url));
+  if (!token && pathname.startsWith("/app")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    url.searchParams.set("next", pathname);
+    return NextResponse.redirect(url);
   }
 
-  // اگر توکن دارد و می‌خواهد به لاگین برود
-  if (token && (pathname === '/login' || pathname === '/register')) {
-    return NextResponse.redirect(new URL('/app/today', request.url));
+  const isAuthPage = pathname === "/login" || pathname === "/register";
+
+  if (token && isAuthPage) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/app/today";
+    url.search = "";
+    return NextResponse.redirect(url);
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/app/:path*', '/login', '/register'],
+  matcher: ["/app/:path*", "/login", "/register"],
 };
