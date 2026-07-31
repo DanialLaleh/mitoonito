@@ -1,95 +1,98 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/current-user";
-import { planLimits } from "@/lib/design-tokens";
+import { revalidatePath } from "next/cache";
 
 function normalizeTitle(value: FormDataEntryValue | null) {
-  if (typeof value !== "string") return "";
-  return value.trim();
+  return String(value || "").trim();
 }
 
 function normalizeColor(value: FormDataEntryValue | null) {
-  if (typeof value !== "string") return "";
-  return value.trim();
+  return String(value || "").trim() || null;
 }
 
 function normalizeIcon(value: FormDataEntryValue | null) {
-  if (typeof value !== "string") return "";
-  return value.trim();
+  return String(value || "").trim() || null;
 }
 
-export async function createAreaAction(formData: FormData) {
+export async function createArea(formData: FormData) {
   const user = await getCurrentUser();
-  if (!user) {
-    throw new Error("Unauthorized");
-  }
+  if (!user) throw new Error("Unauthorized");
 
   const title = normalizeTitle(formData.get("title"));
-  const icon = normalizeIcon(formData.get("icon")) || "circle";
-  const color = normalizeColor(formData.get("color")) || "#50B848";
+  const color = normalizeColor(formData.get("color"));
+  const icon = normalizeIcon(formData.get("icon"));
 
   if (!title) {
-    throw new Error("Title is required");
+    throw new Error("Area title is required");
   }
 
-  const currentCount = await prisma.area.count({
-    where: {
-      userId: user.id,
-    },
-  });
-
-  const userLimit =
-    planLimits[user.plan as keyof typeof planLimits]?.maxAreas ?? 0;
-
-  if (currentCount >= userLimit) {
-    throw new Error("Area limit reached");
-  }
-
-  await prisma.area.create({
+  const area = await prisma.area.create({
     data: {
       userId: user.id,
-      title,
-      icon,
+      name: title,
       color,
-      sortOrder: currentCount,
+      icon,
     },
   });
 
   revalidatePath("/app/areas");
+  revalidatePath("/app/dashboard");
+
+  return area;
 }
 
-export async function deleteAreaAction(formData: FormData) {
+export async function updateArea(formData: FormData) {
   const user = await getCurrentUser();
-  if (!user) {
-    throw new Error("Unauthorized");
-  }
+  if (!user) throw new Error("Unauthorized");
 
-  const areaId = normalizeTitle(formData.get("areaId"));
-  if (!areaId) {
+  const id = String(formData.get("id") || "").trim();
+  const title = normalizeTitle(formData.get("title"));
+  const color = normalizeColor(formData.get("color"));
+  const icon = normalizeIcon(formData.get("icon"));
+
+  if (!id) {
     throw new Error("Area ID is required");
   }
 
-  const area = await prisma.area.findFirst({
+  const area = await prisma.area.update({
     where: {
-      id: areaId,
+      id,
       userId: user.id,
     },
-    select: {
-      id: true,
-    },
-  });
-
-  if (!area) {
-    throw new Error("Area not found");
-  }
-
-  await prisma.area.delete({
-    where: {
-      id: areaId,
+    data: {
+      name: title,
+      color,
+      icon,
     },
   });
 
   revalidatePath("/app/areas");
+  revalidatePath("/app/dashboard");
+
+  return area;
+}
+
+export async function deleteArea(formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const id = String(formData.get("id") || "").trim();
+
+  if (!id) {
+    throw new Error("Area ID is required");
+  }
+
+  const area = await prisma.area.delete({
+    where: {
+      id,
+      userId: user.id,
+    },
+  });
+
+  revalidatePath("/app/areas");
+  revalidatePath("/app/dashboard");
+
+  return area;
 }
