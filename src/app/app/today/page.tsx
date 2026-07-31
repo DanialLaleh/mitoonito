@@ -1,75 +1,140 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/current-user";
-import { startOfDay, endOfDay } from "date-fns";
+import dayjs from "dayjs";
 import { toggleTaskAction, logHabitAction } from "./actions";
 
 export const dynamic = "force-dynamic";
 
+function formatDate(date: Date | null | undefined) {
+  if (!date) return "بدون زمان";
+  return new Intl.DateTimeFormat("fa-IR", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
+}
+
 export default async function TodayPage() {
   const user = await getCurrentUser();
-  if (!user) redirect("/auth/login");
+  if (!user) redirect("/login");
 
-  const now = new Date();
-  const start = startOfDay(now);
-  const end = endOfDay(now);
+  const now = dayjs();
+  const start = now.startOf("day").toDate();
+  const end = now.endOf("day").toDate();
 
   const [tasks, habits] = await Promise.all([
     prisma.task.findMany({
       where: {
         userId: user.id,
-        OR: [
-          { dueDate: { gte: start, lte: end } },
-          { isCompleted: false, dueDate: null }
-        ]
+        OR: [{ dueDate: { gte: start, lte: end } }, { dueDate: null }],
       },
-      orderBy: { createdAt: "desc" }
+      orderBy: { createdAt: "desc" },
     }),
     prisma.habit.findMany({
       where: { userId: user.id },
-      include: {
-        logs: { where: { loggedAt: { gte: start, lte: end } } }
-      }
-    })
+      orderBy: { createdAt: "desc" },
+    }),
   ]);
 
   return (
-    <div className="p-6 space-y-8">
-      <section>
-        <h2 className="text-xl font-bold text-[#434345] mb-4">تسک‌های امروز</h2>
+    <main className="mx-auto max-w-3xl px-4 py-8 pb-24 md:pb-10">
+      <header className="mb-8">
+        <p className="text-sm text-brand-charcoal/70">امروز</p>
+        <h1 className="mt-2 text-3xl font-bold">تمرکز امروز</h1>
+        <p className="mt-2 text-sm text-brand-charcoal/70">
+          کارهای کوچک امروز، نتیجه‌های بزرگ فردا را می‌سازند.
+        </p>
+      </header>
+
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold">کارهای امروز</h2>
+          <span className="text-sm text-brand-charcoal/60">
+            {tasks.length} کار
+          </span>
+        </div>
+
         <div className="space-y-3">
-          {tasks.map(task => (
-            <div key={task.id} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-gray-100 shadow-sm">
-              <span className={task.isCompleted ? "line-through text-gray-400" : "text-[#434345]"}>{task.title}</span>
-              <form action={toggleTaskAction}>
-                <input type="hidden" name="taskId" value={task.id} />
-                <input type="hidden" name="isCompleted" value={String(!task.isCompleted)} />
-                <button type="submit" className={`w-6 h-6 rounded-full border-2 ${task.isCompleted ? "bg-[#50B848] border-[#50B848]" : "border-gray-300"}`} />
-              </form>
+          {tasks.length === 0 ? (
+            <div className="card p-6 text-sm text-brand-charcoal/70">
+              برای امروز کاری نداری. یک کار سبک اضافه کن.
             </div>
-          ))}
+          ) : (
+            tasks.map((task) => (
+              <form
+                key={task.id}
+                action={toggleTaskAction}
+                className="card flex items-center gap-3 p-4"
+              >
+                <input type="hidden" name="taskId" value={task.id} />
+                <input
+                  type="hidden"
+                  name="done"
+                  value={String(!task.done)}
+                />
+                <button
+                  className={`h-5 w-5 rounded-full border-2 ${
+                    task.done
+                      ? "border-brand bg-brand"
+                      : "border-brand-charcoal/30"
+                  }`}
+                  aria-label="تکمیل کار"
+                />
+                <div className="min-w-0 flex-1">
+                  <p
+                    className={`font-medium ${
+                      task.done ? "text-brand-charcoal/50 line-through" : ""
+                    }`}
+                  >
+                    {task.title}
+                  </p>
+                  <p className="mt-1 text-xs text-brand-charcoal/60">
+                    {formatDate(task.dueDate)}
+                  </p>
+                </div>
+              </form>
+            ))
+          )}
         </div>
       </section>
 
-      <section>
-        <h2 className="text-xl font-bold text-[#434345] mb-4">عادت‌های امروز</h2>
-        <div className="grid grid-cols-2 gap-4">
-          {habits.map(habit => (
-            <div key={habit.id} className="p-4 bg-white rounded-2xl border border-gray-100 shadow-sm text-center">
-              <p className="font-medium text-[#434345] mb-2">{habit.title}</p>
-              <form action={logHabitAction}>
-                <input type="hidden" name="habitId" value={habit.id} />
-                <button 
-                  disabled={habit.logs.length > 0}
-                  className={`w-full py-2 rounded-xl text-sm ${habit.logs.length > 0 ? "bg-gray-100 text-gray-400" : "bg-[#9FD18B] text-white"}`}
-                >
-                  {habit.logs.length > 0 ? "انجام شد" : "ثبت انجام"}
-                </button>
-              </form>
+      <section className="mt-10 space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold">عادت‌های امروز</h2>
+          <span className="text-sm text-brand-charcoal/60">
+            {habits.length} عادت
+          </span>
+        </div>
+
+        <div className="space-y-3">
+          {habits.length === 0 ? (
+            <div className="card p-6 text-sm text-brand-charcoal/70">
+              هنوز عادتی نداری. از بخش عادت‌ها یکی اضافه کن.
             </div>
-          ))}
+          ) : (
+            habits.map((habit) => (
+              <form
+                key={habit.id}
+                action={logHabitAction}
+                className="card flex items-center gap-3 p-4"
+              >
+                <input type="hidden" name="habitId" value={habit.id} />
+                <input type="hidden" name="done" value="true" />
+                <button
+                  className="h-5 w-5 rounded-full border-2 border-brand-charcoal/30"
+                  aria-label="ثبت عادت"
+                />
+                <div className="flex-1">
+                  <p className="font-medium">{habit.title}</p>
+                  <p className="mt-1 text-xs text-brand-charcoal/60">
+                    {habit.streak} امتیاز
+                  </p>
+                </div>
+              </form>
+            ))
+          )}
         </div>
       </section>
-    </div>
+    </main>
   );
 }
