@@ -12,7 +12,6 @@ export async function getCurrentUser() {
       id: true,
       email: true,
       name: true,
-      avatarUrl: true,
       plan: true,
       createdAt: true,
       updatedAt: true,
