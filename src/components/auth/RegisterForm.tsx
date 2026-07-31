@@ -8,8 +8,11 @@ import {
 
 const initial: AuthActionState = { ok: false };
 
-export function RegisterForm() {
-  const [state, formAction, pending] = useActionState(registerAction, initial);
+export default function RegisterForm() {
+  const [state, formAction, pending] = useActionState(
+    registerAction,
+    initial
+  );
 
   return (
     <form action={formAction} className="space-y-4">
@@ -23,6 +26,7 @@ export function RegisterForm() {
         <label className="text-sm font-medium" htmlFor="name">
           نام
         </label>
+
         <input
           id="name"
           name="name"
@@ -32,8 +36,11 @@ export function RegisterForm() {
           minLength={2}
           disabled={pending}
         />
+
         {state.fieldErrors?.name?.[0] ? (
-          <p className="text-xs text-red-600">{state.fieldErrors.name[0]}</p>
+          <p className="text-xs text-red-600">
+            {state.fieldErrors.name[0]}
+          </p>
         ) : null}
       </div>
 
@@ -41,6 +48,7 @@ export function RegisterForm() {
         <label className="text-sm font-medium" htmlFor="email">
           ایمیل
         </label>
+
         <input
           id="email"
           name="email"
@@ -51,8 +59,11 @@ export function RegisterForm() {
           disabled={pending}
           autoComplete="email"
         />
+
         {state.fieldErrors?.email?.[0] ? (
-          <p className="text-xs text-red-600">{state.fieldErrors.email[0]}</p>
+          <p className="text-xs text-red-600">
+            {state.fieldErrors.email[0]}
+          </p>
         ) : null}
       </div>
 
@@ -60,6 +71,7 @@ export function RegisterForm() {
         <label className="text-sm font-medium" htmlFor="password">
           رمز عبور
         </label>
+
         <input
           id="password"
           name="password"
@@ -71,12 +83,19 @@ export function RegisterForm() {
           disabled={pending}
           autoComplete="new-password"
         />
+
         {state.fieldErrors?.password?.[0] ? (
-          <p className="text-xs text-red-600">{state.fieldErrors.password[0]}</p>
+          <p className="text-xs text-red-600">
+            {state.fieldErrors.password[0]}
+          </p>
         ) : null}
       </div>
 
-      <button type="submit" className="btn-primary w-full" disabled={pending}>
+      <button
+        type="submit"
+        className="btn-primary w-full"
+        disabled={pending}
+      >
         {pending ? "در حال ساخت حساب..." : "ثبت‌نام و ورود"}
       </button>
     </form>
