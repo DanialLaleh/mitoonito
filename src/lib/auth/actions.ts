@@ -1,59 +1,43 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { defaultAreas } from "@/lib/design-tokens";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
-import {
-  clearSessionCookie,
-  createSessionToken,
-  setSessionCookie,
-} from "@/lib/auth/session";
-import { loginSchema, registerSchema } from "@/lib/validations/auth";
+import { createSessionToken, setSessionCookie, clearSessionCookie } from "@/lib/auth/session";
+import { redirect } from "next/navigation";
 
-export type AuthActionState = {
-  ok: boolean;
-  message?: string;
-  fieldErrors?: Record<string, string[] | undefined>;
-};
+const defaultAreas = [
+  { name: "کار", icon: "briefcase" },
+  { name: "سلامت", icon: "heart" },
+  { name: "مالی", icon: "wallet" },
+  { name: "یادگیری", icon: "book-open" },
+];
 
-export async function registerAction(
-  _prevState: AuthActionState,
-  formData: FormData,
-): Promise<AuthActionState> {
-  const raw = Object.fromEntries(formData.entries());
-  const parsed = registerSchema.safeParse(raw);
+export async function registerAction(formData: FormData) {
+  const email = String(formData.get("email") || "").trim().toLowerCase();
+  const password = String(formData.get("password") || "");
+  const name = String(formData.get("name") || "").trim();
 
-  if (!parsed.success) {
-    return {
-      ok: false,
-      message: "لطفاً اطلاعات را به‌درستی وارد کنید.",
-      fieldErrors: parsed.error.flatten().fieldErrors,
-    };
+  if (!email || !password) {
+    throw new Error("Email and password are required.");
   }
 
-  const { name, email, password } = parsed.data;
+  const existingUser = await prisma.user.findUnique({
+    where: { email },
+  });
 
-  const existingUser = await prisma.user.findUnique({ where: { email } });
   if (existingUser) {
-    return { ok: false, message: "این ایمیل قبلاً ثبت شده است." };
+    throw new Error("این ایمیل قبلاً ثبت شده است.");
   }
 
-  const passwordHash = await hashPassword(password);
+  const hashedPassword = await hashPassword(password);
 
   const user = await prisma.user.create({
     data: {
-      name,
       email,
-      password: passwordHash,
-      plan: "FREE",
+      password: hashedPassword,
+      name: name || null,
       areas: {
-        create: defaultAreas.map((area, index) => ({
-          name: area.name ?? area.title,
-          icon: area.icon,
-          sortOrder: index,
-          color: "#50B848",
-        })),
+        create: defaultAreas,
       },
     },
     select: {
@@ -70,44 +54,30 @@ export async function registerAction(
   });
 
   await setSessionCookie(token);
+
   redirect("/app/today");
 }
 
-export async function loginAction(
-  _prevState: AuthActionState,
-  formData: FormData,
-): Promise<AuthActionState> {
-  const raw = Object.fromEntries(formData.entries());
-  const parsed = loginSchema.safeParse(raw);
+export async function loginAction(formData: FormData) {
+  const email = String(formData.get("email") || "").trim().toLowerCase();
+  const password = String(formData.get("password") || "");
 
-  if (!parsed.success) {
-    return {
-      ok: false,
-      message: "لطفاً اطلاعات را به‌درستی وارد کنید.",
-      fieldErrors: parsed.error.flatten().fieldErrors,
-    };
+  if (!email || !password) {
+    throw new Error("Email and password are required.");
   }
-
-  const { email, password } = parsed.data;
 
   const user = await prisma.user.findUnique({
     where: { email },
-    select: {
-      id: true,
-      email: true,
-      password: true,
-      plan: true,
-    },
   });
 
-  if (!user?.password) {
-    return { ok: false, message: "ایمیل یا رمز عبور اشتباه است." };
+  if (!user || !user.password) {
+    throw new Error("ایمیل یا رمز عبور اشتباه است.");
   }
 
   const valid = await verifyPassword(password, user.password);
 
   if (!valid) {
-    return { ok: false, message: "ایمیل یا رمز عبور اشتباه است." };
+    throw new Error("ایمیل یا رمز عبور اشتباه است.");
   }
 
   const token = await createSessionToken({
@@ -117,6 +87,7 @@ export async function loginAction(
   });
 
   await setSessionCookie(token);
+
   redirect("/app/today");
 }
 
