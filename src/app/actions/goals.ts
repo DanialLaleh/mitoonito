@@ -1,173 +1,71 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { revalidatePath } from "next/cache";
 
-function normalizeString(value: FormDataEntryValue | null) {
-  if (typeof value !== "string") return "";
-  return value.trim();
-}
-
-export async function createGoalAction(formData: FormData) {
+export async function createGoal(formData: FormData) {
   const user = await getCurrentUser();
-  if (!user) throw new Error("کاربر احراز هویت نشده است.");
+  if (!user) throw new Error("Unauthorized");
 
-  const title = normalizeString(formData.get("title"));
-  if (!title) throw new Error("وارد کردن عنوان هدف الزامی است.");
+  const title = String(formData.get("title") || "").trim();
+  const description = String(formData.get("description") || "").trim();
+  const targetRaw = String(formData.get("target") || "").trim();
+  const target = Number(targetRaw);
 
-  const description = normalizeString(formData.get("description")) || null;
+  if (!title) {
+    throw new Error("Goal title is required");
+  }
 
-  await prisma.goal.create({
+  const goal = await prisma.goal.create({
     data: {
       userId: user.id,
       title,
-      description,
-      isCompleted: false,
+      description: description || null,
+      target: Number.isFinite(target) && target > 0 ? target : 100,
+      current: 0,
     },
   });
 
   revalidatePath("/app/goals");
   revalidatePath("/app/dashboard");
-  revalidatePath("/app/today");
+
+  return goal;
 }
 
-export async function updateGoalAction(formData: FormData) {
+export async function updateGoalProgress(goalId: string, current: number) {
   const user = await getCurrentUser();
-  if (!user) throw new Error("کاربر احراز هویت نشده است.");
+  if (!user) throw new Error("Unauthorized");
 
-  const goalId = normalizeString(formData.get("goalId"));
-  const title = normalizeString(formData.get("title"));
-  if (!goalId) throw new Error("شناسه هدف یافت نشد.");
-  if (!title) throw new Error("عنوان هدف نمی‌تواند خالی باشد.");
-
-  const description = normalizeString(formData.get("description")) || null;
-
-  const existingGoal = await prisma.goal.findFirst({
-    where: { id: goalId, userId: user.id },
-  });
-  if (!existingGoal) throw new Error("هدف مورد نظر یافت نشد یا دسترسی مجاز نیست.");
-
-  await prisma.goal.update({
-    where: { id: goalId },
-    data: {
-      title,
-      description,
-    },
-  });
-
-  revalidatePath("/app/goals");
-  revalidatePath("/app/dashboard");
-}
-
-export async function toggleGoalCompletedAction(formData: FormData) {
-  const user = await getCurrentUser();
-  if (!user) throw new Error("کاربر احراز هویت نشده است.");
-
-  const goalId = normalizeString(formData.get("goalId"));
-  const isCompleted = formData.get("isCompleted") === "true";
-  if (!goalId) throw new Error("شناسه هدف یافت نشد.");
-
-  const existingGoal = await prisma.goal.findFirst({
-    where: { id: goalId, userId: user.id },
-  });
-  if (!existingGoal) throw new Error("هدف مورد نظر یافت نشد یا دسترسی مجاز نیست.");
-
-  await prisma.goal.update({
-    where: { id: goalId },
-    data: { isCompleted },
-  });
-
-  revalidatePath("/app/goals");
-  revalidatePath("/app/dashboard");
-}
-
-export async function deleteGoalAction(formData: FormData) {
-  const user = await getCurrentUser();
-  if (!user) throw new Error("کاربر احراز هویت نشده است.");
-
-  const goalId = normalizeString(formData.get("goalId"));
-  if (!goalId) throw new Error("شناسه هدف یافت نشد.");
-
-  const existingGoal = await prisma.goal.findFirst({
-    where: { id: goalId, userId: user.id },
-  });
-  if (!existingGoal) throw new Error("هدف مورد نظر یافت نشد یا دسترسی مجاز نیست.");
-
-  await prisma.goal.delete({
-    where: { id: goalId },
-  });
-
-  revalidatePath("/app/goals");
-  revalidatePath("/app/dashboard");
-  revalidatePath("/app/today");
-}
-
-export async function linkTaskToGoalAction(formData: FormData) {
-  const user = await getCurrentUser();
-  if (!user) throw new Error("کاربر احراز هویت نشده است.");
-
-  const taskId = normalizeString(formData.get("taskId"));
-  const goalId = normalizeString(formData.get("goalId"));
-
-  if (!taskId) throw new Error("شناسه تسک یافت نشد.");
-  if (!goalId) throw new Error("شناسه هدف یافت نشد.");
-
-  const [task, goal] = await Promise.all([
-    prisma.task.findFirst({
-      where: { id: taskId, userId: user.id },
-    }),
-    prisma.goal.findFirst({
-      where: { id: goalId, userId: user.id },
-    }),
-  ]);
-
-  if (!task) throw new Error("تسک مورد نظر یافت نشد.");
-  if (!goal) throw new Error("هدف مورد نظر یافت نشد.");
-
-  await prisma.task.update({
-    where: { id: taskId },
-    data: {
-      goalId,
-    },
-  });
-
-  revalidatePath("/app/goals");
-  revalidatePath("/app/dashboard");
-}
-
-export async function createGoalTaskAction(formData: FormData) {
-  const user = await getCurrentUser();
-  if (!user) throw new Error("کاربر احراز هویت نشده است.");
-
-  const goalId = normalizeString(formData.get("goalId"));
-  const title = normalizeString(formData.get("title"));
-  const description = normalizeString(formData.get("description")) || null;
-  const dateValue = normalizeString(formData.get("date"));
-
-  if (!goalId) throw new Error("شناسه هدف یافت نشد.");
-  if (!title) throw new Error("عنوان تسک الزامی است.");
-
-  const existingGoal = await prisma.goal.findFirst({
-    where: { id: goalId, userId: user.id },
-  });
-  if (!existingGoal) throw new Error("هدف مورد نظر یافت نشد یا دسترسی مجاز نیست.");
-
-  const dueDate = dateValue ? new Date(dateValue) : null;
-
-  await prisma.task.create({
-    data: {
+  const goal = await prisma.goal.update({
+    where: {
+      id: goalId,
       userId: user.id,
-      goalId,
-      title,
-      description,
-      dueDate,
-      isCompleted: false,
-      completedAt: null,
+    },
+    data: {
+      current,
     },
   });
 
   revalidatePath("/app/goals");
   revalidatePath("/app/dashboard");
-  revalidatePath("/app/today");
+
+  return goal;
+}
+
+export async function deleteGoal(goalId: string) {
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const goal = await prisma.goal.delete({
+    where: {
+      id: goalId,
+      userId: user.id,
+    },
+  });
+
+  revalidatePath("/app/goals");
+  revalidatePath("/app/dashboard");
+
+  return goal;
 }
