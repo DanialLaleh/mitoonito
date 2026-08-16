@@ -13,3 +13,12 @@ export const loginSchema = z.object({
 
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
+export const areaSchema = z.object({
+  title: z
+    .string()
+    .min(1, "عنوان حوزه را وارد کنید")
+    .max(50, "عنوان خیلی طولانی است"),
+  color: z.string().optional(),
+});
+
+export type AreaInput = z.infer<typeof areaSchema>;
