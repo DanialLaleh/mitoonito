@@ -59,3 +59,21 @@ export const habitSchema = z.object({
 });
 
 export type HabitInput = z.infer<typeof habitSchema>;
+export const reminderSchema = z.object({
+  text: z
+    .string()
+    .min(1, "متن یادآور را وارد کنید")
+    .max(150, "متن خیلی طولانی است"),
+  remindAt: z.string().min(1, "زمان یادآوری را انتخاب کنید"),
+});
+
+export type ReminderInput = z.infer<typeof reminderSchema>;
+export const transactionSchema = z.object({
+  type: z.enum(["INCOME", "EXPENSE"]),
+  amount: z.coerce.number().positive("مبلغ باید بزرگتر از صفر باشد"),
+  category: z.string().min(1, "دسته‌بندی را وارد کنید").max(50),
+  description: z.string().optional(),
+  date: z.string().min(1, "تاریخ را انتخاب کنید"),
+});
+
+export type TransactionInput = z.infer<typeof transactionSchema>;
