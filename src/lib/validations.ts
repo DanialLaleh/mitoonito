@@ -34,3 +34,17 @@ export const goalSchema = z.object({
 });
 
 export type GoalInput = z.infer<typeof goalSchema>;
+export const taskSchema = z.object({
+  title: z
+    .string()
+    .min(1, "عنوان وظیفه را وارد کنید")
+    .max(150, "عنوان خیلی طولانی است"),
+  description: z.string().optional(),
+  areaId: z.string().optional(),
+  priority: z.enum(["LOW", "MEDIUM", "HIGH"]).default("MEDIUM"),
+  scheduledDate: z.string().min(1, "تاریخ برنامه‌ریزی را انتخاب کنید"),
+  dueDate: z.string().optional(),
+  estimatedMinutes: z.coerce.number().int().positive().optional(),
+});
+
+export type TaskInput = z.infer<typeof taskSchema>;
