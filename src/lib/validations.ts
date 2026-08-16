@@ -48,3 +48,14 @@ export const taskSchema = z.object({
 });
 
 export type TaskInput = z.infer<typeof taskSchema>;
+export const habitSchema = z.object({
+  title: z
+    .string()
+    .min(1, "عنوان عادت را وارد کنید")
+    .max(100, "عنوان خیلی طولانی است"),
+  description: z.string().optional(),
+  areaId: z.string().optional(),
+  frequency: z.enum(["DAILY", "WEEKLY"]).default("DAILY"),
+});
+
+export type HabitInput = z.infer<typeof habitSchema>;
