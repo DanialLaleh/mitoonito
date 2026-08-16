@@ -22,3 +22,15 @@ export const areaSchema = z.object({
 });
 
 export type AreaInput = z.infer<typeof areaSchema>;
+export const goalSchema = z.object({
+  title: z
+    .string()
+    .min(1, "عنوان هدف را وارد کنید")
+    .max(100, "عنوان خیلی طولانی است"),
+  areaId: z.string().optional(),
+  targetValue: z.coerce.number().positive("مقدار هدف باید بزرگتر از صفر باشد"),
+  unit: z.string().optional(),
+  deadline: z.string().optional(),
+});
+
+export type GoalInput = z.infer<typeof goalSchema>;
