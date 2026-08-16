@@ -1,0 +1,167 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Plan {
+  FREE
+  PREMIUM
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+  SKIPPED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum HabitFrequency {
+  DAILY
+  WEEKLY
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  plan         Plan     @default(FREE)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  areas        Area[]
+  goals        Goal[]
+  tasks        Task[]
+  habits       Habit[]
+  reminders    Reminder[]
+  transactions Transaction[]
+}
+
+model Area {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  color     String?
+  icon      String?
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  goals  Goal[]
+  tasks  Task[]
+  habits Habit[]
+
+  @@index([userId])
+}
+
+model Goal {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  areaId        String?
+  area          Area?     @relation(fields: [areaId], references: [id], onDelete: SetNull)
+  title         String
+  targetValue   Float
+  currentValue  Float     @default(0)
+  unit          String?
+  deadline      DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([areaId])
+}
+
+model Task {
+  id               String       @id @default(cuid())
+  userId           String
+  user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  areaId           String?
+  area             Area?        @relation(fields: [areaId], references: [id], onDelete: SetNull)
+  title            String
+  description      String?
+  status           TaskStatus   @default(TODO)
+  priority         TaskPriority @default(MEDIUM)
+  scheduledDate    DateTime
+  dueDate          DateTime?
+  estimatedMinutes Int?
+  completedAt      DateTime?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@index([userId])
+  @@index([areaId])
+  @@index([scheduledDate])
+}
+
+model Habit {
+  id             String         @id @default(cuid())
+  userId         String
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  areaId         String?
+  area           Area?          @relation(fields: [areaId], references: [id], onDelete: SetNull)
+  title          String
+  description    String?
+  frequency      HabitFrequency @default(DAILY)
+  isActive       Boolean        @default(true)
+  currentStreak  Int            @default(0)
+  longestStreak  Int            @default(0)
+  createdAt      DateTime       @default(now())
+
+  completions HabitCompletion[]
+
+  @@index([userId])
+  @@index([areaId])
+}
+
+model HabitCompletion {
+  id          String   @id @default(cuid())
+  habitId     String
+  habit       Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
+  date        DateTime
+  completedAt DateTime @default(now())
+
+  @@unique([habitId, date])
+  @@index([habitId])
+}
+
+model Reminder {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  text      String
+  remindAt  DateTime
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Transaction {
+  id          String           @id @default(cuid())
+  userId      String
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        TransactionType
+  amount      Float
+  category    String
+  description String?
+  date        DateTime
+  createdAt   DateTime         @default(now())
+
+  @@index([userId])
+  @@index([date])
+}
