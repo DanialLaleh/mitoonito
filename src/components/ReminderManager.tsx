@@ -8,6 +8,7 @@ import {
   toggleReminderActiveAction,
   type ActionState,
 } from "@/actions/reminders";
+import PersianDatePicker from "@/components/PersianDatePicker";
 import { Trash2, Pencil, Plus, Bell, BellOff } from "lucide-react";
 
 type Reminder = {
@@ -93,16 +94,15 @@ function ReminderForm({
         className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
       />
 
-      <input
+      <PersianDatePicker
         name="remindAt"
-        type="datetime-local"
         defaultValue={
           defaultValues?.remindAt
             ? new Date(defaultValues.remindAt).toISOString().slice(0, 16)
-            : ""
+            : undefined
         }
-        required
-        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+        placeholder="تاریخ و ساعت یادآوری"
+        withTime
       />
 
       {state?.error && (
