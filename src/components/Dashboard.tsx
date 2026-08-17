@@ -1,3 +1,4 @@
+import { toPersianDigits } from "@/lib/format";
 import Link from "next/link";
 import {
   CheckCircle2,
@@ -67,13 +68,14 @@ export default function Dashboard({
         <div className="bg-white border border-gray-100 rounded-2xl p-4">
           <p className="text-xs text-gray-400 mb-1">وظایف امروز</p>
           <p className="text-lg font-bold">
-            {doneCount} / {totalCount}
+            {toPersianDigits(doneCount)} / {toPersianDigits(totalCount)}
           </p>
         </div>
         <div className="bg-white border border-gray-100 rounded-2xl p-4">
           <p className="text-xs text-gray-400 mb-1">عادت‌های امروز</p>
           <p className="text-lg font-bold">
-            {habitsDoneCount} / {habits.length}
+            {toPersianDigits(habitsDoneCount)} /{" "}
+            {toPersianDigits(habits.length)}
           </p>
         </div>
       </div>
@@ -151,7 +153,7 @@ export default function Dashboard({
               {h.currentStreak > 0 && (
                 <span className="text-xs text-orange-500 flex items-center gap-0.5">
                   <Flame size={11} />
-                  {h.currentStreak}
+                  {toPersianDigits(h.currentStreak)}
                 </span>
               )}
             </div>
@@ -177,7 +179,9 @@ export default function Dashboard({
               <div key={g.id} className="py-1.5">
                 <div className="flex items-center justify-between text-sm mb-1">
                   <span>{g.title}</span>
-                  <span className="text-gray-400 text-xs">{percent}٪</span>
+                  <span className="text-gray-400 text-xs">
+                    {toPersianDigits(percent)}٪
+                  </span>
                 </div>
                 <div className="w-full bg-gray-100 rounded-full h-1.5">
                   <div

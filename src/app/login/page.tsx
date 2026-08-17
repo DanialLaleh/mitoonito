@@ -20,12 +20,12 @@ export default function LoginPage() {
           alt="میتونی‌تو"
           className="h-24 w-auto mx-auto mb-4"
         />
-        <h1 className="text-2xl font-bold text-center mb-1 text-gray-900 dark:text-gray-100">
+        <p className="text-lg font-bold text-center mb-1 text-gray-900 dark:text-gray-100">
+          میتونی‌تو؛ خودت رو بساز
+        </p>
+        <h1 className="text-sm font-medium text-gray-500 dark:text-gray-400 text-center mb-6">
           ورود
         </h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 text-center mb-6">
-          خوش برگشتی به میتونی‌تو
-        </p>
 
         <form action={formAction} className="flex flex-col gap-4">
           <div>

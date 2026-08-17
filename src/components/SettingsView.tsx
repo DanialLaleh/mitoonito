@@ -1,5 +1,5 @@
 "use client";
-
+import { toPersianDigits } from "@/lib/format";
 import { logoutAction } from "@/actions/auth";
 import { User, Mail, Crown, LogOut } from "lucide-react";
 
@@ -105,7 +105,7 @@ function UsageBar({
         <span
           className={isNearLimit ? "text-red-600 font-medium" : "text-gray-400"}
         >
-          {current} / {max}
+          {toPersianDigits(current)} / {toPersianDigits(max)}
         </span>
       </div>
       <div className="w-full bg-gray-100 rounded-full h-1.5">

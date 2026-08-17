@@ -24,6 +24,12 @@ enum TaskPriority {
   HIGH
 }
 
+enum RecurrenceFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
 enum HabitFrequency {
   DAILY
   WEEKLY
@@ -87,25 +93,31 @@ model Goal {
 }
 
 model Task {
-  id               String       @id @default(cuid())
-  userId           String
-  user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  areaId           String?
-  area             Area?        @relation(fields: [areaId], references: [id], onDelete: SetNull)
-  title            String
-  description      String?
-  status           TaskStatus   @default(TODO)
-  priority         TaskPriority @default(MEDIUM)
-  scheduledDate    DateTime
-  dueDate          DateTime?
-  estimatedMinutes Int?
-  completedAt      DateTime?
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
+  id                  String                @id @default(cuid())
+  userId              String
+  user                User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  areaId              String?
+  area                Area?                 @relation(fields: [areaId], references: [id], onDelete: SetNull)
+  parentTaskId        String?
+  parentTask          Task?                 @relation("TaskSubtasks", fields: [parentTaskId], references: [id], onDelete: Cascade)
+  subtasks            Task[]                @relation("TaskSubtasks")
+  title               String
+  description         String?
+  status              TaskStatus            @default(TODO)
+  priority            TaskPriority          @default(MEDIUM)
+  labels              String[]              @default([])
+  recurrenceFrequency RecurrenceFrequency?
+  scheduledDate       DateTime
+  dueDate             DateTime?
+  estimatedMinutes    Int?
+  completedAt         DateTime?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
 
   @@index([userId])
   @@index([areaId])
   @@index([scheduledDate])
+  @@index([parentTaskId])
 }
 
 model Habit {

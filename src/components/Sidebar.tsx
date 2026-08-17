@@ -54,13 +54,13 @@ export default function Sidebar({ userName }: { userName: string }) {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-base transition-colors ${
                 isActive
                   ? "bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-400 font-medium"
                   : "text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
               }`}
             >
-              <Icon size={18} />
+              <Icon size={20} />
               {item.label}
             </Link>
           );

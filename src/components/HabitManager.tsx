@@ -1,5 +1,6 @@
 "use client";
 
+import { toPersianDigits } from "@/lib/format";
 import { useActionState, useState } from "react";
 import {
   createHabitAction,
@@ -220,7 +221,7 @@ function HabitRow({ habit, areas }: { habit: Habit; areas: Area[] }) {
             {habit.currentStreak > 0 && (
               <span className="flex items-center gap-0.5 text-xs text-orange-500">
                 <Flame size={12} />
-                {habit.currentStreak} روز
+                {toPersianDigits(habit.currentStreak)} روز
               </span>
             )}
           </div>

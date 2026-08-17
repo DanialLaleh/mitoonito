@@ -9,8 +9,11 @@ export default async function TasksPage() {
 
   const [tasks, areas] = await Promise.all([
     prisma.task.findMany({
-      where: { userId: session.userId },
+      where: { userId: session.userId, parentTaskId: null },
       orderBy: { scheduledDate: "asc" },
+      include: {
+        subtasks: { orderBy: { createdAt: "asc" } },
+      },
     }),
     prisma.area.findMany({
       where: { userId: session.userId },

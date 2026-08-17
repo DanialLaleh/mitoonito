@@ -41,7 +41,12 @@ export const taskSchema = z.object({
     .max(150, "عنوان خیلی طولانی است"),
   description: z.string().optional(),
   areaId: z.string().optional(),
+  parentTaskId: z.string().optional(),
   priority: z.enum(["LOW", "MEDIUM", "HIGH"]).default("MEDIUM"),
+  labels: z.string().optional(), // متن با کاما جدا می‌شه، توی کد سرور به آرایه تبدیل می‌شه
+  recurrenceFrequency: z
+    .enum(["NONE", "DAILY", "WEEKLY", "MONTHLY"])
+    .default("NONE"),
   scheduledDate: z.string().min(1, "تاریخ برنامه‌ریزی را انتخاب کنید"),
   dueDate: z.string().optional(),
   estimatedMinutes: z.coerce.number().int().positive().optional(),

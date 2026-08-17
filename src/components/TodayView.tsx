@@ -1,5 +1,6 @@
 "use client";
 
+import { toPersianDigits } from "@/lib/format";
 import { completeTaskAction, uncompleteTaskAction } from "@/actions/tasks";
 import { toggleHabitCompletionAction } from "@/actions/habits";
 import { CheckCircle2, Circle, Flame, Bell, AlertCircle } from "lucide-react";
@@ -118,7 +119,7 @@ export default function TodayView({
                 {habit.currentStreak > 0 && (
                   <span className="text-xs text-orange-500 flex items-center gap-0.5">
                     <Flame size={12} />
-                    {habit.currentStreak} روز
+                    {toPersianDigits(habit.currentStreak)} روز
                   </span>
                 )}
               </div>

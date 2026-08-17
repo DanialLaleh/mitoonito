@@ -1,5 +1,5 @@
 "use client";
-
+import { toPersianDigits } from "@/lib/format";
 import { useActionState, useState } from "react";
 import {
   createGoalAction,
@@ -213,8 +213,9 @@ function GoalCard({ goal, areas }: { goal: Goal; areas: Area[] }) {
 
       <div className="flex items-center justify-between text-xs text-gray-500">
         <span>
-          {goal.currentValue} / {goal.targetValue} {goal.unit ?? ""} ({percent}
-          ٪)
+          {toPersianDigits(goal.currentValue)} /{" "}
+          {toPersianDigits(goal.targetValue)} {goal.unit ?? ""} (
+          {toPersianDigits(percent)}٪)
         </span>
         <div className="flex items-center gap-1">
           <button
