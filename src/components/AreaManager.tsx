@@ -28,7 +28,7 @@ export default function AreaManager({ areas }: { areas: Area[] }) {
   const [showAddForm, setShowAddForm] = useState(false);
 
   return (
-    <div className="max-w-xl mx-auto p-4 md:p-8">
+    <div className="max-w-6xl mx-auto p-4 md:p-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-bold">حوزه‌های زندگی</h1>
         {!showAddForm && (
@@ -51,7 +51,7 @@ export default function AreaManager({ areas }: { areas: Area[] }) {
         </div>
       )}
 
-      <div className="flex flex-col gap-2 mt-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-4">
         {areas.map((area) => (
           <AreaRow key={area.id} area={area} />
         ))}

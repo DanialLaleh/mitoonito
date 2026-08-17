@@ -45,7 +45,7 @@ export default function HabitManager({
   const inactive = habits.filter((h) => !h.isActive);
 
   return (
-    <div className="max-w-xl mx-auto p-4 md:p-8">
+    <div className="max-w-6xl mx-auto p-4 md:p-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-bold">عادت‌ها</h1>
         {!showAddForm && (
@@ -69,7 +69,7 @@ export default function HabitManager({
         </div>
       )}
 
-      <div className="flex flex-col gap-2 mt-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-4">
         {active.map((habit) => (
           <HabitRow key={habit.id} habit={habit} areas={areas} />
         ))}
@@ -78,7 +78,7 @@ export default function HabitManager({
       {inactive.length > 0 && (
         <div className="mt-6">
           <h2 className="text-sm font-medium text-gray-400 mb-2">غیرفعال</h2>
-          <div className="flex flex-col gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {inactive.map((habit) => (
               <HabitRow key={habit.id} habit={habit} areas={areas} />
             ))}

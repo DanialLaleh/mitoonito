@@ -23,7 +23,7 @@ export default function SettingsView({
   const isFree = plan === "FREE";
 
   return (
-    <div className="max-w-lg mx-auto p-4 md:p-8">
+    <div className="max-w-6xl mx-auto p-4 md:p-8">
       <h1 className="text-xl font-bold mb-6">تنظیمات</h1>
 
       <div className="bg-white border border-gray-100 rounded-2xl p-4 mb-4 flex flex-col gap-3">
