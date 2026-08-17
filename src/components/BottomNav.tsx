@@ -22,7 +22,7 @@ export default function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-gray-100 md:hidden">
+    <nav className="fixed bottom-0 inset-x-0 z-40 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 md:hidden">
       <div className="flex items-center justify-around h-16">
         {items.map((item) => {
           const isActive = pathname.startsWith(item.href);
@@ -32,7 +32,9 @@ export default function BottomNav() {
               key={item.href}
               href={item.href}
               className={`flex flex-col items-center justify-center gap-1 text-xs w-full h-full ${
-                isActive ? "text-green-600" : "text-gray-400"
+                isActive
+                  ? "text-green-600 dark:text-green-400"
+                  : "text-gray-400 dark:text-gray-600"
               }`}
             >
               <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
