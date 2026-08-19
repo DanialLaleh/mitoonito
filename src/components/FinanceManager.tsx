@@ -63,7 +63,9 @@ export default function FinanceManager({
   return (
     <div className="max-w-6xl mx-auto p-4 md:p-8">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-bold">امور مالی</h1>
+        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+          امور مالی
+        </h1>
         {!showAddForm && (
           <button
             onClick={() => setShowAddForm(true)}
@@ -76,23 +78,29 @@ export default function FinanceManager({
       </div>
 
       <div className="grid grid-cols-3 gap-2 mb-6">
-        <div className="bg-white border border-gray-100 rounded-2xl p-3 text-center">
-          <p className="text-xs text-gray-400 mb-1">درآمد این ماه</p>
-          <p className="text-sm font-bold text-green-600">
+        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-3 text-center">
+          <p className="text-xs text-gray-400 dark:text-gray-500 mb-1">
+            درآمد این ماه
+          </p>
+          <p className="text-sm font-bold text-green-600 dark:text-green-400">
             {formatToman(income)}
           </p>
         </div>
-        <div className="bg-white border border-gray-100 rounded-2xl p-3 text-center">
-          <p className="text-xs text-gray-400 mb-1">هزینه این ماه</p>
-          <p className="text-sm font-bold text-red-500">
+        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-3 text-center">
+          <p className="text-xs text-gray-400 dark:text-gray-500 mb-1">
+            هزینه این ماه
+          </p>
+          <p className="text-sm font-bold text-red-500 dark:text-red-400">
             {formatToman(expense)}
           </p>
         </div>
-        <div className="bg-white border border-gray-100 rounded-2xl p-3 text-center">
-          <p className="text-xs text-gray-400 mb-1">تراز</p>
+        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-3 text-center">
+          <p className="text-xs text-gray-400 dark:text-gray-500 mb-1">تراز</p>
           <p
             className={`text-sm font-bold ${
-              balance >= 0 ? "text-gray-900" : "text-red-500"
+              balance >= 0
+                ? "text-gray-900 dark:text-gray-100"
+                : "text-red-500 dark:text-red-400"
             }`}
           >
             {formatToman(balance)}
@@ -101,8 +109,10 @@ export default function FinanceManager({
       </div>
 
       {Object.keys(categoryBreakdown).length > 0 && (
-        <div className="bg-white border border-gray-100 rounded-2xl p-4 mb-6">
-          <p className="text-sm font-medium mb-3">هزینه‌ها بر اساس دسته</p>
+        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 mb-6">
+          <p className="text-sm font-medium mb-3 text-gray-900 dark:text-gray-100">
+            هزینه‌ها بر اساس دسته
+          </p>
           <div className="flex flex-col gap-2">
             {Object.entries(categoryBreakdown)
               .sort((a, b) => b[1] - a[1])
@@ -111,8 +121,10 @@ export default function FinanceManager({
                   key={category}
                   className="flex items-center justify-between text-sm"
                 >
-                  <span className="text-gray-600">{category}</span>
-                  <span className="text-gray-900 font-medium">
+                  <span className="text-gray-600 dark:text-gray-400">
+                    {category}
+                  </span>
+                  <span className="text-gray-900 dark:text-gray-100 font-medium">
                     {formatToman(amount)}
                   </span>
                 </div>
@@ -124,7 +136,7 @@ export default function FinanceManager({
       {showAddForm && <TransactionForm onDone={() => setShowAddForm(false)} />}
 
       {transactions.length === 0 && !showAddForm && (
-        <div className="text-center text-gray-400 text-sm py-16 border border-dashed border-gray-200 rounded-2xl">
+        <div className="text-center text-gray-400 dark:text-gray-500 text-sm py-16 border border-dashed border-gray-200 dark:border-gray-700 rounded-2xl">
           هنوز تراکنشی ثبت نکردی.
         </div>
       )}
@@ -159,7 +171,7 @@ function TransactionForm({
   return (
     <form
       action={formAction}
-      className="bg-white border border-gray-100 rounded-2xl p-4 mb-4 flex flex-col gap-3"
+      className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 mb-4 flex flex-col gap-3"
     >
       {defaultValues && (
         <input type="hidden" name="id" value={defaultValues.id} />
@@ -172,8 +184,8 @@ function TransactionForm({
           onClick={() => setType("EXPENSE")}
           className={`rounded-lg py-2 text-sm font-medium border ${
             type === "EXPENSE"
-              ? "bg-red-50 border-red-200 text-red-600"
-              : "border-gray-200 text-gray-400"
+              ? "bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400"
+              : "border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500"
           }`}
         >
           هزینه
@@ -183,8 +195,8 @@ function TransactionForm({
           onClick={() => setType("INCOME")}
           className={`rounded-lg py-2 text-sm font-medium border ${
             type === "INCOME"
-              ? "bg-green-50 border-green-200 text-green-600"
-              : "border-gray-200 text-gray-400"
+              ? "bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800 text-green-600 dark:text-green-400"
+              : "border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500"
           }`}
         >
           درآمد
@@ -197,7 +209,7 @@ function TransactionForm({
         placeholder="مبلغ (تومان)"
         defaultValue={defaultValues?.amount}
         required
-        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+        className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
       />
 
       <input
@@ -205,14 +217,14 @@ function TransactionForm({
         placeholder="دسته‌بندی (مثلاً: خوراک، حمل‌ونقل)"
         defaultValue={defaultValues?.category}
         required
-        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+        className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
       />
 
       <input
         name="description"
         placeholder="توضیح (اختیاری)"
         defaultValue={defaultValues?.description ?? ""}
-        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+        className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
       />
 
       <PersianDatePicker
@@ -225,7 +237,7 @@ function TransactionForm({
       />
 
       {state?.error && (
-        <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
+        <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950 rounded-lg px-3 py-2">
           {state.error}
         </p>
       )}
@@ -241,7 +253,7 @@ function TransactionForm({
         <button
           type="button"
           onClick={onDone}
-          className="text-sm text-gray-500 px-4 py-2"
+          className="text-sm text-gray-500 dark:text-gray-400 px-4 py-2"
         >
           انصراف
         </button>
@@ -264,16 +276,24 @@ function TransactionRow({ transaction }: { transaction: Transaction }) {
   }
 
   return (
-    <div className="flex items-center justify-between bg-white border border-gray-100 rounded-2xl px-4 py-3">
+    <div className="flex items-center justify-between bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl px-4 py-3">
       <div className="flex items-center gap-3 min-w-0">
         {isIncome ? (
-          <TrendingUp size={16} className="text-green-600 shrink-0" />
+          <TrendingUp
+            size={16}
+            className="text-green-600 dark:text-green-400 shrink-0"
+          />
         ) : (
-          <TrendingDown size={16} className="text-red-500 shrink-0" />
+          <TrendingDown
+            size={16}
+            className="text-red-500 dark:text-red-400 shrink-0"
+          />
         )}
         <div className="min-w-0">
-          <p className="text-sm font-medium truncate">{transaction.category}</p>
-          <p className="text-xs text-gray-400 mt-0.5">
+          <p className="text-sm font-medium truncate text-gray-900 dark:text-gray-100">
+            {transaction.category}
+          </p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
             {formatDate(transaction.date)}
           </p>
         </div>
@@ -281,7 +301,9 @@ function TransactionRow({ transaction }: { transaction: Transaction }) {
       <div className="flex items-center gap-2 shrink-0">
         <span
           className={`text-sm font-medium ${
-            isIncome ? "text-green-600" : "text-red-500"
+            isIncome
+              ? "text-green-600 dark:text-green-400"
+              : "text-red-500 dark:text-red-400"
           }`}
         >
           {isIncome ? "+" : "-"}
@@ -289,13 +311,13 @@ function TransactionRow({ transaction }: { transaction: Transaction }) {
         </span>
         <button
           onClick={() => setEditing(true)}
-          className="p-1.5 text-gray-400 hover:text-gray-700"
+          className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
         >
           <Pencil size={14} />
         </button>
         <button
           onClick={() => deleteTransactionAction(transaction.id)}
-          className="p-1.5 text-gray-400 hover:text-red-600"
+          className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400"
         >
           <Trash2 size={14} />
         </button>

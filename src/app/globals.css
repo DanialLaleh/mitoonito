@@ -33,3 +33,56 @@ body {
   font-family: "IRANSans", system-ui, sans-serif;
   @apply antialiased transition-colors duration-200;
 }
+
+/* استایل تیره برای پاپ‌آپ تقویم شمسی */
+.dark .rmdp-wrapper {
+  background-color: #111827;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+.dark .rmdp-calendar {
+  background-color: #111827;
+}
+.dark .rmdp-day {
+  color: #e5e7eb;
+}
+.dark .rmdp-day.rmdp-disabled {
+  color: #6b7280;
+}
+.dark .rmdp-week-day {
+  color: #9ca3af;
+}
+.dark .rmdp-header-values {
+  color: #f3f4f6;
+}
+.dark .rmdp-arrow {
+  border-color: #9ca3af;
+}
+.dark .rmdp-arrow-container:hover {
+  background-color: #1f2937;
+}
+.dark .rmdp-day:not(.rmdp-disabled):not(.rmdp-day-hidden) span:hover {
+  background-color: #16a34a;
+  color: white;
+}
+.dark .rmdp-day.rmdp-today span {
+  background-color: transparent;
+  border: 1px solid #16a34a;
+  color: #16a34a;
+}
+.dark .rmdp-day.rmdp-selected span:not(.highlight) {
+  background-color: #16a34a !important;
+  color: white;
+}
+.dark .rmdp-time-picker {
+  background-color: #111827;
+}
+.dark .rmdp-time-picker input,
+.dark .rmdp-time-picker div {
+  background-color: #1f2937;
+  color: #f3f4f6;
+}
+.dark .rmdp-month-picker,
+.dark .rmdp-year-picker {
+  background-color: #111827;
+  color: #e5e7eb;
+}

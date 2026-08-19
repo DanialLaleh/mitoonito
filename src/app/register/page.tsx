@@ -77,7 +77,7 @@ export default function RegisterPage() {
           </div>
 
           {state?.error && (
-            <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
+            <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950 rounded-lg px-3 py-2">
               {state.error}
             </p>
           )}
@@ -93,7 +93,10 @@ export default function RegisterPage() {
 
         <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-6">
           حساب داری؟{" "}
-          <Link href="/login" className="text-green-600 font-medium">
+          <Link
+            href="/login"
+            className="text-green-600 dark:text-green-400 font-medium"
+          >
             وارد شو
           </Link>
         </p>

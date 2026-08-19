@@ -30,7 +30,9 @@ export default function AreaManager({ areas }: { areas: Area[] }) {
   return (
     <div className="max-w-6xl mx-auto p-4 md:p-8">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-bold">حوزه‌های زندگی</h1>
+        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+          حوزه‌های زندگی
+        </h1>
         {!showAddForm && (
           <button
             onClick={() => setShowAddForm(true)}
@@ -45,7 +47,7 @@ export default function AreaManager({ areas }: { areas: Area[] }) {
       {showAddForm && <AreaForm onDone={() => setShowAddForm(false)} />}
 
       {areas.length === 0 && !showAddForm && (
-        <div className="text-center text-gray-400 text-sm py-16 border border-dashed border-gray-200 rounded-2xl">
+        <div className="text-center text-gray-400 dark:text-gray-500 text-sm py-16 border border-dashed border-gray-200 dark:border-gray-700 rounded-2xl">
           هنوز هیچ حوزه‌ای نساختی. یک حوزه مثل «سلامت» یا «کار» بساز تا شروع
           کنیم.
         </div>
@@ -77,7 +79,7 @@ function AreaForm({
   return (
     <form
       action={formAction}
-      className="bg-white border border-gray-100 rounded-2xl p-4 mb-4 flex flex-col gap-3"
+      className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 mb-4 flex flex-col gap-3"
     >
       {defaultValues && (
         <input type="hidden" name="id" value={defaultValues.id} />
@@ -89,7 +91,7 @@ function AreaForm({
         placeholder="مثلاً: سلامت"
         defaultValue={defaultValues?.title}
         required
-        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+        className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
       />
 
       <div className="flex items-center gap-2">
@@ -99,7 +101,9 @@ function AreaForm({
             type="button"
             onClick={() => setColor(c)}
             className={`w-6 h-6 rounded-full border-2 ${
-              color === c ? "border-gray-900" : "border-transparent"
+              color === c
+                ? "border-gray-900 dark:border-gray-100"
+                : "border-transparent"
             }`}
             style={{ backgroundColor: c }}
           />
@@ -107,7 +111,7 @@ function AreaForm({
       </div>
 
       {state?.error && (
-        <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
+        <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950 rounded-lg px-3 py-2">
           {state.error}
         </p>
       )}
@@ -123,7 +127,7 @@ function AreaForm({
         <button
           type="button"
           onClick={onDone}
-          className="text-sm text-gray-500 px-4 py-2"
+          className="text-sm text-gray-500 dark:text-gray-400 px-4 py-2"
         >
           انصراف
         </button>
@@ -140,24 +144,26 @@ function AreaRow({ area }: { area: Area }) {
   }
 
   return (
-    <div className="flex items-center justify-between bg-white border border-gray-100 rounded-2xl px-4 py-3">
+    <div className="flex items-center justify-between bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl px-4 py-3">
       <div className="flex items-center gap-3">
         <span
           className="w-3 h-3 rounded-full"
           style={{ backgroundColor: area.color ?? "#9ca3af" }}
         />
-        <span className="text-sm font-medium">{area.title}</span>
+        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+          {area.title}
+        </span>
       </div>
       <div className="flex items-center gap-1">
         <button
           onClick={() => setEditing(true)}
-          className="p-2 text-gray-400 hover:text-gray-700"
+          className="p-2 text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
         >
           <Pencil size={16} />
         </button>
         <button
           onClick={() => deleteAreaAction(area.id)}
-          className="p-2 text-gray-400 hover:text-red-600"
+          className="p-2 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400"
         >
           <Trash2 size={16} />
         </button>

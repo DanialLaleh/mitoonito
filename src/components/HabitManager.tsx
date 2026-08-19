@@ -1,6 +1,5 @@
 "use client";
 
-import { toPersianDigits } from "@/lib/format";
 import { useActionState, useState } from "react";
 import {
   createHabitAction,
@@ -10,6 +9,7 @@ import {
   toggleHabitCompletionAction,
   type ActionState,
 } from "@/actions/habits";
+import { toPersianDigits } from "@/lib/format";
 import {
   Trash2,
   Pencil,
@@ -47,7 +47,9 @@ export default function HabitManager({
   return (
     <div className="max-w-6xl mx-auto p-4 md:p-8">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-bold">عادت‌ها</h1>
+        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+          عادت‌ها
+        </h1>
         {!showAddForm && (
           <button
             onClick={() => setShowAddForm(true)}
@@ -64,7 +66,7 @@ export default function HabitManager({
       )}
 
       {habits.length === 0 && !showAddForm && (
-        <div className="text-center text-gray-400 text-sm py-16 border border-dashed border-gray-200 rounded-2xl">
+        <div className="text-center text-gray-400 dark:text-gray-500 text-sm py-16 border border-dashed border-gray-200 dark:border-gray-700 rounded-2xl">
           هنوز عادتی نساختی. یک عادت مثل «۱۰ دقیقه مطالعه» بساز.
         </div>
       )}
@@ -77,7 +79,9 @@ export default function HabitManager({
 
       {inactive.length > 0 && (
         <div className="mt-6">
-          <h2 className="text-sm font-medium text-gray-400 mb-2">غیرفعال</h2>
+          <h2 className="text-sm font-medium text-gray-400 dark:text-gray-500 mb-2">
+            غیرفعال
+          </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {inactive.map((habit) => (
               <HabitRow key={habit.id} habit={habit} areas={areas} />
@@ -107,7 +111,7 @@ function HabitForm({
   return (
     <form
       action={formAction}
-      className="bg-white border border-gray-100 rounded-2xl p-4 mb-4 flex flex-col gap-3"
+      className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 mb-4 flex flex-col gap-3"
     >
       {defaultValues && (
         <input type="hidden" name="id" value={defaultValues.id} />
@@ -118,7 +122,7 @@ function HabitForm({
         placeholder="مثلاً: ۱۰ دقیقه مطالعه"
         defaultValue={defaultValues?.title}
         required
-        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+        className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
       />
 
       <textarea
@@ -126,14 +130,14 @@ function HabitForm({
         placeholder="توضیح (اختیاری)"
         defaultValue={defaultValues?.description ?? ""}
         rows={2}
-        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+        className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
       />
 
       <div className="grid grid-cols-2 gap-2">
         <select
           name="areaId"
           defaultValue={defaultValues?.areaId ?? ""}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+          className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
         >
           <option value="">بدون حوزه</option>
           {areas.map((a) => (
@@ -146,7 +150,7 @@ function HabitForm({
         <select
           name="frequency"
           defaultValue={defaultValues?.frequency ?? "DAILY"}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+          className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
         >
           <option value="DAILY">روزانه</option>
           <option value="WEEKLY">هفتگی</option>
@@ -154,7 +158,7 @@ function HabitForm({
       </div>
 
       {state?.error && (
-        <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
+        <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950 rounded-lg px-3 py-2">
           {state.error}
         </p>
       )}
@@ -170,7 +174,7 @@ function HabitForm({
         <button
           type="button"
           onClick={onDone}
-          className="text-sm text-gray-500 px-4 py-2"
+          className="text-sm text-gray-500 dark:text-gray-400 px-4 py-2"
         >
           انصراف
         </button>
@@ -195,7 +199,7 @@ function HabitRow({ habit, areas }: { habit: Habit; areas: Area[] }) {
 
   return (
     <div
-      className={`flex items-center justify-between bg-white border border-gray-100 rounded-2xl px-4 py-3 ${
+      className={`flex items-center justify-between bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl px-4 py-3 ${
         !habit.isActive ? "opacity-50" : ""
       }`}
     >
@@ -206,20 +210,24 @@ function HabitRow({ habit, areas }: { habit: Habit; areas: Area[] }) {
           className={`shrink-0 w-8 h-8 rounded-full border-2 flex items-center justify-center ${
             habit.completedToday
               ? "bg-green-600 border-green-600"
-              : "border-gray-300"
+              : "border-gray-300 dark:border-gray-600"
           }`}
         >
           {habit.completedToday && <Check size={16} className="text-white" />}
         </button>
 
         <div className="min-w-0">
-          <p className="text-sm font-medium truncate">{habit.title}</p>
+          <p className="text-sm font-medium truncate text-gray-900 dark:text-gray-100">
+            {habit.title}
+          </p>
           <div className="flex items-center gap-2 mt-0.5">
             {area && (
-              <span className="text-xs text-gray-400">{area.title}</span>
+              <span className="text-xs text-gray-400 dark:text-gray-500">
+                {area.title}
+              </span>
             )}
             {habit.currentStreak > 0 && (
-              <span className="flex items-center gap-0.5 text-xs text-orange-500">
+              <span className="flex items-center gap-0.5 text-xs text-orange-500 dark:text-orange-400">
                 <Flame size={12} />
                 {toPersianDigits(habit.currentStreak)} روز
               </span>
@@ -231,7 +239,7 @@ function HabitRow({ habit, areas }: { habit: Habit; areas: Area[] }) {
       <div className="flex items-center gap-1 shrink-0">
         <button
           onClick={() => toggleHabitActiveAction(habit.id)}
-          className="p-2 text-gray-400 hover:text-gray-700"
+          className="p-2 text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
         >
           {habit.isActive ? (
             <PauseCircle size={16} />
@@ -241,13 +249,13 @@ function HabitRow({ habit, areas }: { habit: Habit; areas: Area[] }) {
         </button>
         <button
           onClick={() => setEditing(true)}
-          className="p-2 text-gray-400 hover:text-gray-700"
+          className="p-2 text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
         >
           <Pencil size={16} />
         </button>
         <button
           onClick={() => deleteHabitAction(habit.id)}
-          className="p-2 text-gray-400 hover:text-red-600"
+          className="p-2 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400"
         >
           <Trash2 size={16} />
         </button>

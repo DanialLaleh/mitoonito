@@ -1,5 +1,5 @@
 "use client";
-import { toPersianDigits } from "@/lib/format";
+
 import { useActionState, useState } from "react";
 import {
   createGoalAction,
@@ -8,8 +8,10 @@ import {
   updateGoalProgressAction,
   type ActionState,
 } from "@/actions/goals";
-import { Trash2, Pencil, Plus, Minus, PlusCircle } from "lucide-react";
 import PersianDatePicker from "@/components/PersianDatePicker";
+import { toPersianDigits } from "@/lib/format";
+import { Trash2, Pencil, Plus, Minus, PlusCircle } from "lucide-react";
+
 type Area = { id: string; title: string; color: string | null };
 type Goal = {
   id: string;
@@ -33,7 +35,9 @@ export default function GoalManager({
   return (
     <div className="max-w-6xl mx-auto p-4 md:p-8">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-bold">اهداف</h1>
+        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+          اهداف
+        </h1>
         {!showAddForm && (
           <button
             onClick={() => setShowAddForm(true)}
@@ -50,7 +54,7 @@ export default function GoalManager({
       )}
 
       {goals.length === 0 && !showAddForm && (
-        <div className="text-center text-gray-400 text-sm py-16 border border-dashed border-gray-200 rounded-2xl">
+        <div className="text-center text-gray-400 dark:text-gray-500 text-sm py-16 border border-dashed border-gray-200 dark:border-gray-700 rounded-2xl">
           هنوز هدفی نساختی. یک هدف عددی مثل «۱۰ کتاب در سال» بساز.
         </div>
       )}
@@ -82,7 +86,7 @@ function GoalForm({
   return (
     <form
       action={formAction}
-      className="bg-white border border-gray-100 rounded-2xl p-4 mb-4 flex flex-col gap-3"
+      className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 mb-4 flex flex-col gap-3"
     >
       {defaultValues && (
         <input type="hidden" name="id" value={defaultValues.id} />
@@ -93,7 +97,7 @@ function GoalForm({
         placeholder="مثلاً: ۱۰ کتاب در سال"
         defaultValue={defaultValues?.title}
         required
-        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+        className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
       />
 
       <div className="grid grid-cols-2 gap-2">
@@ -104,20 +108,20 @@ function GoalForm({
           placeholder="مقدار هدف (مثلاً 10)"
           defaultValue={defaultValues?.targetValue}
           required
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+          className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
         />
         <input
           name="unit"
           placeholder="واحد (مثلاً کتاب)"
           defaultValue={defaultValues?.unit ?? ""}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+          className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
         />
       </div>
 
       <select
         name="areaId"
         defaultValue={defaultValues?.areaId ?? ""}
-        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+        className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
       >
         <option value="">بدون حوزه</option>
         {areas.map((a) => (
@@ -138,7 +142,7 @@ function GoalForm({
       />
 
       {state?.error && (
-        <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
+        <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950 rounded-lg px-3 py-2">
           {state.error}
         </p>
       )}
@@ -154,7 +158,7 @@ function GoalForm({
         <button
           type="button"
           onClick={onDone}
-          className="text-sm text-gray-500 px-4 py-2"
+          className="text-sm text-gray-500 dark:text-gray-400 px-4 py-2"
         >
           انصراف
         </button>
@@ -182,36 +186,42 @@ function GoalCard({ goal, areas }: { goal: Goal; areas: Area[] }) {
   }
 
   return (
-    <div className="bg-white border border-gray-100 rounded-2xl p-4">
+    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4">
       <div className="flex items-start justify-between mb-2">
         <div>
-          <p className="text-sm font-medium">{goal.title}</p>
-          {area && <p className="text-xs text-gray-400 mt-0.5">{area.title}</p>}
+          <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+            {goal.title}
+          </p>
+          {area && (
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+              {area.title}
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-1">
           <button
             onClick={() => setEditing(true)}
-            className="p-1.5 text-gray-400 hover:text-gray-700"
+            className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
           >
             <Pencil size={15} />
           </button>
           <button
             onClick={() => deleteGoalAction(goal.id)}
-            className="p-1.5 text-gray-400 hover:text-red-600"
+            className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400"
           >
             <Trash2 size={15} />
           </button>
         </div>
       </div>
 
-      <div className="w-full bg-gray-100 rounded-full h-2 mb-2">
+      <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-2 mb-2">
         <div
           className="bg-green-600 h-2 rounded-full transition-all"
           style={{ width: `${percent}%` }}
         />
       </div>
 
-      <div className="flex items-center justify-between text-xs text-gray-500">
+      <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
         <span>
           {toPersianDigits(goal.currentValue)} /{" "}
           {toPersianDigits(goal.targetValue)} {goal.unit ?? ""} (
@@ -222,7 +232,7 @@ function GoalCard({ goal, areas }: { goal: Goal; areas: Area[] }) {
             onClick={() =>
               updateGoalProgressAction(goal.id, goal.currentValue - 1)
             }
-            className="p-1 rounded bg-gray-100 hover:bg-gray-200"
+            className="p-1 rounded bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
           >
             <Minus size={14} />
           </button>
@@ -230,7 +240,7 @@ function GoalCard({ goal, areas }: { goal: Goal; areas: Area[] }) {
             onClick={() =>
               updateGoalProgressAction(goal.id, goal.currentValue + 1)
             }
-            className="p-1 rounded bg-gray-100 hover:bg-gray-200"
+            className="p-1 rounded bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
           >
             <PlusCircle size={14} />
           </button>

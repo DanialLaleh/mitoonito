@@ -35,7 +35,9 @@ export default function ReminderManager({
   return (
     <div className="max-w-6xl mx-auto p-4 md:p-8">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-bold">یادآورها</h1>
+        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+          یادآورها
+        </h1>
         {!showAddForm && (
           <button
             onClick={() => setShowAddForm(true)}
@@ -50,7 +52,7 @@ export default function ReminderManager({
       {showAddForm && <ReminderForm onDone={() => setShowAddForm(false)} />}
 
       {reminders.length === 0 && !showAddForm && (
-        <div className="text-center text-gray-400 text-sm py-16 border border-dashed border-gray-200 rounded-2xl">
+        <div className="text-center text-gray-400 dark:text-gray-500 text-sm py-16 border border-dashed border-gray-200 dark:border-gray-700 rounded-2xl">
           هنوز یادآوری نساختی.
         </div>
       )}
@@ -80,7 +82,7 @@ function ReminderForm({
   return (
     <form
       action={formAction}
-      className="bg-white border border-gray-100 rounded-2xl p-4 mb-4 flex flex-col gap-3"
+      className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 mb-4 flex flex-col gap-3"
     >
       {defaultValues && (
         <input type="hidden" name="id" value={defaultValues.id} />
@@ -91,7 +93,7 @@ function ReminderForm({
         placeholder="متن یادآور"
         defaultValue={defaultValues?.text}
         required
-        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+        className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
       />
 
       <PersianDatePicker
@@ -106,7 +108,7 @@ function ReminderForm({
       />
 
       {state?.error && (
-        <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
+        <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950 rounded-lg px-3 py-2">
           {state.error}
         </p>
       )}
@@ -122,7 +124,7 @@ function ReminderForm({
         <button
           type="button"
           onClick={onDone}
-          className="text-sm text-gray-500 px-4 py-2"
+          className="text-sm text-gray-500 dark:text-gray-400 px-4 py-2"
         >
           انصراف
         </button>
@@ -142,15 +144,20 @@ function ReminderRow({ reminder }: { reminder: Reminder }) {
 
   return (
     <div
-      className={`flex items-center justify-between bg-white border border-gray-100 rounded-2xl px-4 py-3 ${
+      className={`flex items-center justify-between bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl px-4 py-3 ${
         !reminder.isActive ? "opacity-50" : ""
       }`}
     >
       <div className="flex items-center gap-3 min-w-0">
-        <Bell size={16} className="text-green-600 shrink-0" />
+        <Bell
+          size={16}
+          className="text-green-600 dark:text-green-400 shrink-0"
+        />
         <div className="min-w-0">
-          <p className="text-sm font-medium truncate">{reminder.text}</p>
-          <p className="text-xs text-gray-400 mt-0.5">
+          <p className="text-sm font-medium truncate text-gray-900 dark:text-gray-100">
+            {reminder.text}
+          </p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
             {formatDateTime(reminder.remindAt)}
           </p>
         </div>
@@ -158,19 +165,19 @@ function ReminderRow({ reminder }: { reminder: Reminder }) {
       <div className="flex items-center gap-1 shrink-0">
         <button
           onClick={() => toggleReminderActiveAction(reminder.id)}
-          className="p-2 text-gray-400 hover:text-gray-700"
+          className="p-2 text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
         >
           {reminder.isActive ? <Bell size={16} /> : <BellOff size={16} />}
         </button>
         <button
           onClick={() => setEditing(true)}
-          className="p-2 text-gray-400 hover:text-gray-700"
+          className="p-2 text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
         >
           <Pencil size={16} />
         </button>
         <button
           onClick={() => deleteReminderAction(reminder.id)}
-          className="p-2 text-gray-400 hover:text-red-600"
+          className="p-2 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400"
         >
           <Trash2 size={16} />
         </button>

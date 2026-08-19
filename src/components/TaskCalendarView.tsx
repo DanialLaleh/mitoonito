@@ -1,10 +1,11 @@
 "use client";
-import { toPersianDigits } from "@/lib/format";
+
 import { useState } from "react";
 import { DateObject } from "react-multi-date-picker";
 import persian from "react-date-object/calendars/persian";
 import persian_fa from "react-date-object/locales/persian_fa";
 import { ChevronRight, ChevronLeft } from "lucide-react";
+import { toPersianDigits } from "@/lib/format";
 
 type Task = {
   id: string;
@@ -49,28 +50,28 @@ export default function TaskCalendarView({ tasks }: { tasks: Task[] }) {
   }
 
   return (
-    <div className="bg-white border border-gray-100 rounded-2xl p-4">
+    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4">
       <div className="flex items-center justify-between mb-4">
         <button
           onClick={() =>
             setCurrent(new DateObject(current).subtract(1, "month"))
           }
-          className="p-1 text-gray-400 hover:text-gray-700"
+          className="p-1 text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
         >
           <ChevronRight size={18} />
         </button>
-        <p className="text-sm font-medium">
+        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
           {current.month.name} {toPersianDigits(current.year)}
         </p>
         <button
           onClick={() => setCurrent(new DateObject(current).add(1, "month"))}
-          className="p-1 text-gray-400 hover:text-gray-700"
+          className="p-1 text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
         >
           <ChevronLeft size={18} />
         </button>
       </div>
 
-      <div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-400 mb-1">
+      <div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-400 dark:text-gray-500 mb-1">
         {weekDays.map((d) => (
           <div key={d}>{d}</div>
         ))}
@@ -81,12 +82,16 @@ export default function TaskCalendarView({ tasks }: { tasks: Task[] }) {
           <div
             key={i}
             className={`min-h-16 rounded-lg border p-1 text-xs ${
-              c && isToday(c) ? "border-green-400" : "border-gray-100"
+              c && isToday(c)
+                ? "border-green-400 dark:border-green-500"
+                : "border-gray-100 dark:border-gray-800"
             }`}
           >
             {c && (
               <>
-                <div className="text-gray-500">{toPersianDigits(c.day)}</div>
+                <div className="text-gray-500 dark:text-gray-400">
+                  {toPersianDigits(c.day)}
+                </div>
                 <div className="flex flex-col gap-0.5 mt-1">
                   {tasksForDay(c)
                     .slice(0, 3)
@@ -95,15 +100,15 @@ export default function TaskCalendarView({ tasks }: { tasks: Task[] }) {
                         key={t.id}
                         className={`truncate rounded px-1 ${
                           t.status === "DONE"
-                            ? "bg-green-50 text-green-600 line-through"
-                            : "bg-gray-50 text-gray-600"
+                            ? "bg-green-50 dark:bg-green-950 text-green-600 dark:text-green-400 line-through"
+                            : "bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300"
                         }`}
                       >
                         {t.title}
                       </div>
                     ))}
                   {tasksForDay(c).length > 3 && (
-                    <div className="text-gray-400">
+                    <div className="text-gray-400 dark:text-gray-500">
                       +{toPersianDigits(tasksForDay(c).length - 3)} مورد دیگه
                     </div>
                   )}
