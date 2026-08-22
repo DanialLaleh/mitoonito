@@ -81,6 +81,20 @@ export const transactionSchema = z.object({
   category: z.string().min(1, "دسته‌بندی را وارد کنید").max(50),
   description: z.string().optional(),
   date: z.string().min(1, "تاریخ را انتخاب کنید"),
+  accountId: z.string().optional(),
+  isRecurring: z.coerce.boolean().optional(),
+  recurrenceFrequency: z
+    .enum(["NONE", "DAILY", "WEEKLY", "MONTHLY"])
+    .default("NONE"),
+});
+
+export const accountSchema = z.object({
+  name: z.string().min(1, "نام حساب را وارد کنید").max(50),
+});
+
+export const budgetSchema = z.object({
+  category: z.string().min(1, "دسته‌بندی را وارد کنید").max(50),
+  monthlyLimit: z.coerce.number().positive("سقف بودجه باید بزرگتر از صفر باشد"),
 });
 
 export type TransactionInput = z.infer<typeof transactionSchema>;

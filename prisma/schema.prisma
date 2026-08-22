@@ -55,6 +55,8 @@ model User {
   habits       Habit[]
   reminders    Reminder[]
   transactions Transaction[]
+  accounts     Account[]
+  budgets      Budget[]
 }
 
 model Area {
@@ -183,16 +185,46 @@ model Reminder {
 }
 
 model Transaction {
-  id          String           @id @default(cuid())
-  userId      String
-  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type        TransactionType
-  amount      Float
-  category    String
-  description String?
-  date        DateTime
-  createdAt   DateTime         @default(now())
+  id                  String                @id @default(cuid())
+  userId              String
+  user                User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId           String?
+  account             Account?              @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  type                TransactionType
+  amount              Float
+  category            String
+  description         String?
+  date                DateTime
+  isRecurring         Boolean               @default(false)
+  recurrenceFrequency RecurrenceFrequency?
+  createdAt           DateTime              @default(now())
 
   @@index([userId])
   @@index([date])
+  @@index([accountId])
+}
+
+model Account {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  transactions Transaction[]
+
+  @@index([userId])
+}
+
+model Budget {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category    String
+  monthlyLimit Float
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, category])
+  @@index([userId])
 }
