@@ -25,13 +25,21 @@ export default async function HabitsPage() {
   ]);
 
   const today = toDateOnly(new Date());
+  const rangeStart = new Date(today);
+  rangeStart.setDate(rangeStart.getDate() - 90);
 
   const habits = await Promise.all(
     habitsRaw.map(async (habit) => {
-      const completion = await prisma.habitCompletion.findUnique({
-        where: { habitId_date: { habitId: habit.id, date: today } },
-      });
-      return { ...habit, completedToday: !!completion };
+      const [completion, history] = await Promise.all([
+        prisma.habitCompletion.findUnique({
+          where: { habitId_date: { habitId: habit.id, date: today } },
+        }),
+        prisma.habitCompletion.findMany({
+          where: { habitId: habit.id, date: { gte: rangeStart } },
+          select: { date: true, isFreeze: true },
+        }),
+      ]);
+      return { ...habit, completedToday: !!completion, history };
     })
   );
 

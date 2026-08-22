@@ -17,6 +17,7 @@ type Habit = {
   title: string;
   completedToday: boolean;
   currentStreak: number;
+  reminderTime: string | null;
 };
 type Reminder = { id: string; text: string; remindAt: Date };
 
@@ -112,9 +113,17 @@ export default function TodayView({
                       <CheckCircle2 size={14} className="text-white" />
                     )}
                   </button>
-                  <span className="text-sm text-gray-900 dark:text-gray-100">
-                    {habit.title}
-                  </span>
+                  <div>
+                    <span className="text-sm text-gray-900 dark:text-gray-100">
+                      {habit.title}
+                    </span>
+                    {habit.reminderTime && (
+                      <span className="flex items-center gap-0.5 text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                        <Bell size={10} />
+                        {habit.reminderTime}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 {habit.currentStreak > 0 && (
                   <span className="text-xs text-orange-500 dark:text-orange-400 flex items-center gap-0.5">

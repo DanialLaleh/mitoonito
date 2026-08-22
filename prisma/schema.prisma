@@ -121,18 +121,22 @@ model Task {
 }
 
 model Habit {
-  id             String         @id @default(cuid())
-  userId         String
-  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  areaId         String?
-  area           Area?          @relation(fields: [areaId], references: [id], onDelete: SetNull)
-  title          String
-  description    String?
-  frequency      HabitFrequency @default(DAILY)
-  isActive       Boolean        @default(true)
-  currentStreak  Int            @default(0)
-  longestStreak  Int            @default(0)
-  createdAt      DateTime       @default(now())
+  id               String         @id @default(cuid())
+  userId           String
+  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  areaId           String?
+  area             Area?          @relation(fields: [areaId], references: [id], onDelete: SetNull)
+  title            String
+  description      String?
+  frequency        HabitFrequency @default(DAILY)
+  daysOfWeek       Int[]          @default([])
+  reminderTime     String?
+  isActive         Boolean        @default(true)
+  currentStreak    Int            @default(0)
+  longestStreak    Int            @default(0)
+  freezesAvailable Int            @default(3)
+  freezesUsed      Int            @default(0)
+  createdAt        DateTime       @default(now())
 
   completions HabitCompletion[]
 
@@ -145,6 +149,7 @@ model HabitCompletion {
   habitId     String
   habit       Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
   date        DateTime
+  isFreeze    Boolean  @default(false)
   completedAt DateTime @default(now())
 
   @@unique([habitId, date])

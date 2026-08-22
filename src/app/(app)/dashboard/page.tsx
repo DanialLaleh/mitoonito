@@ -68,8 +68,13 @@ export default async function DashboardPage() {
     getGoldenHours(session.userId),
   ]);
 
+  const todayWeekDay = today.getDay();
+  const applicableHabits = habitsRaw.filter(
+    (h) => h.daysOfWeek.length === 0 || h.daysOfWeek.includes(todayWeekDay)
+  );
+
   const habits = await Promise.all(
-    habitsRaw.map(async (habit) => {
+    applicableHabits.map(async (habit) => {
       const completion = await prisma.habitCompletion.findUnique({
         where: { habitId_date: { habitId: habit.id, date: today } },
       });

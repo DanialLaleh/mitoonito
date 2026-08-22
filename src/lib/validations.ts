@@ -61,6 +61,8 @@ export const habitSchema = z.object({
   description: z.string().optional(),
   areaId: z.string().optional(),
   frequency: z.enum(["DAILY", "WEEKLY"]).default("DAILY"),
+  daysOfWeek: z.array(z.coerce.number().int().min(0).max(6)).optional(),
+  reminderTime: z.string().optional(),
 });
 
 export type HabitInput = z.infer<typeof habitSchema>;

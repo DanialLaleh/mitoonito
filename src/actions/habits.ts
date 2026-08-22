@@ -22,11 +22,15 @@ export async function createHabitAction(
   const session = await getSession();
   if (!session) return { error: "ابتدا وارد شوید" };
 
+  const daysOfWeekRaw = formData.getAll("daysOfWeek");
+
   const parsed = habitSchema.safeParse({
     title: formData.get("title"),
     description: formData.get("description") || undefined,
     areaId: formData.get("areaId") || undefined,
     frequency: formData.get("frequency") || "DAILY",
+    daysOfWeek: daysOfWeekRaw.length > 0 ? daysOfWeekRaw : undefined,
+    reminderTime: formData.get("reminderTime") || undefined,
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
@@ -51,6 +55,8 @@ export async function createHabitAction(
       title: parsed.data.title,
       description: parsed.data.description,
       frequency: parsed.data.frequency,
+      daysOfWeek: parsed.data.daysOfWeek ?? [],
+      reminderTime: parsed.data.reminderTime || null,
     },
   });
 
@@ -68,11 +74,15 @@ export async function updateHabitAction(
   if (!session) return { error: "ابتدا وارد شوید" };
 
   const id = formData.get("id") as string;
+  const daysOfWeekRaw = formData.getAll("daysOfWeek");
+
   const parsed = habitSchema.safeParse({
     title: formData.get("title"),
     description: formData.get("description") || undefined,
     areaId: formData.get("areaId") || undefined,
     frequency: formData.get("frequency") || "DAILY",
+    daysOfWeek: daysOfWeekRaw.length > 0 ? daysOfWeekRaw : undefined,
+    reminderTime: formData.get("reminderTime") || undefined,
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
@@ -87,10 +97,14 @@ export async function updateHabitAction(
       title: parsed.data.title,
       description: parsed.data.description,
       frequency: parsed.data.frequency,
+      daysOfWeek: parsed.data.daysOfWeek ?? [],
+      reminderTime: parsed.data.reminderTime || null,
     },
   });
 
   revalidatePath("/habits");
+  revalidatePath("/today");
+  revalidatePath("/dashboard");
   return null;
 }
 
@@ -122,7 +136,56 @@ export async function toggleHabitActiveAction(id: string) {
   revalidatePath("/habits");
 }
 
-// ثبت یا لغو انجام عادت برای امروز، و محاسبه‌ی streak
+// محاسبه‌ی مجدد استریک با در نظر گرفتن روزهای مشخص هفته و روزهای یخ‌زده
+async function recalculateStreak(habitId: string) {
+  const habit = await prisma.habit.findUnique({ where: { id: habitId } });
+  if (!habit) return;
+
+  const completions = await prisma.habitCompletion.findMany({
+    where: { habitId },
+  });
+  const recordByDate = new Map<number, boolean>(); // timestamp -> isFreeze
+  completions.forEach((c) => {
+    recordByDate.set(toDateOnly(c.date).getTime(), c.isFreeze);
+  });
+
+  const hasSpecificDays = habit.daysOfWeek.length > 0;
+  const today = toDateOnly(new Date());
+
+  function isApplicableDay(date: Date) {
+    if (!hasSpecificDays) return true;
+    return habit.daysOfWeek.includes(date.getDay());
+  }
+
+  let currentStreak = 0;
+  const cursor = new Date(today);
+
+  // اگر امروز روز فعالی هست ولی هنوز ثبتی نداره، از دیروز شروع کن
+  if (isApplicableDay(cursor) && !recordByDate.has(cursor.getTime())) {
+    cursor.setDate(cursor.getDate() - 1);
+  }
+
+  // حداکثر یک سال به عقب برمی‌گردیم تا حلقه‌ی بی‌نهایت نشه
+  for (let i = 0; i < 366; i++) {
+    if (isApplicableDay(cursor)) {
+      if (recordByDate.has(cursor.getTime())) {
+        currentStreak++;
+      } else {
+        break;
+      }
+    }
+    cursor.setDate(cursor.getDate() - 1);
+  }
+
+  const longestStreak = Math.max(habit.longestStreak, currentStreak);
+
+  await prisma.habit.update({
+    where: { id: habitId },
+    data: { currentStreak, longestStreak },
+  });
+}
+
+// ثبت یا لغو انجام عادت برای امروز
 export async function toggleHabitCompletionAction(habitId: string) {
   const session = await getSession();
   if (!session) return;
@@ -137,44 +200,56 @@ export async function toggleHabitCompletionAction(habitId: string) {
   });
 
   if (existing) {
-    // لغو ثبت امروز
     await prisma.habitCompletion.delete({ where: { id: existing.id } });
   } else {
-    // ثبت انجام امروز
     await prisma.habitCompletion.create({
-      data: { habitId, date: today },
+      data: { habitId, date: today, isFreeze: false },
     });
   }
 
-  // محاسبه‌ی دوباره‌ی streak از روی تاریخچه‌ی کامل
-  const completions = await prisma.habitCompletion.findMany({
-    where: { habitId },
-    orderBy: { date: "desc" },
-  });
-
-  let currentStreak = 0;
-  const dates = completions.map((c) => toDateOnly(c.date).getTime());
-  const dateSet = new Set(dates);
-
-  const cursor = new Date(today);
-  // اگر امروز ثبت نشده، از دیروز شروع کن (تا streak دیروز حفظ بشه)
-  if (!dateSet.has(today.getTime())) {
-    cursor.setDate(cursor.getDate() - 1);
-  }
-
-  while (dateSet.has(cursor.getTime())) {
-    currentStreak++;
-    cursor.setDate(cursor.getDate() - 1);
-  }
-
-  const longestStreak = Math.max(habit.longestStreak, currentStreak);
-
-  await prisma.habit.update({
-    where: { id: habitId },
-    data: { currentStreak, longestStreak },
-  });
+  await recalculateStreak(habitId);
 
   revalidatePath("/habits");
   revalidatePath("/today");
   revalidatePath("/dashboard");
+}
+
+// یخ‌زدن استریک امروز (به‌جای انجام واقعی)
+export async function freezeHabitTodayAction(habitId: string) {
+  const session = await getSession();
+  if (!session) return { error: "ابتدا وارد شوید" };
+
+  const habit = await prisma.habit.findUnique({ where: { id: habitId } });
+  if (!habit || habit.userId !== session.userId)
+    return { error: "دسترسی مجاز نیست" };
+
+  if (habit.freezesUsed >= habit.freezesAvailable) {
+    return { error: "سهمیه‌ی یخ‌زدن استریک این عادت تموم شده" };
+  }
+
+  const today = toDateOnly(new Date());
+
+  const existing = await prisma.habitCompletion.findUnique({
+    where: { habitId_date: { habitId, date: today } },
+  });
+
+  if (existing) {
+    return { error: "امروز قبلاً برای این عادت ثبتی داشتی" };
+  }
+
+  await prisma.habitCompletion.create({
+    data: { habitId, date: today, isFreeze: true },
+  });
+
+  await prisma.habit.update({
+    where: { id: habitId },
+    data: { freezesUsed: { increment: 1 } },
+  });
+
+  await recalculateStreak(habitId);
+
+  revalidatePath("/habits");
+  revalidatePath("/today");
+  revalidatePath("/dashboard");
+  return null;
 }
