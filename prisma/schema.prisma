@@ -75,21 +75,35 @@ model Area {
 }
 
 model Goal {
-  id            String    @id @default(cuid())
+  id            String      @id @default(cuid())
   userId        String
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   areaId        String?
-  area          Area?     @relation(fields: [areaId], references: [id], onDelete: SetNull)
+  area          Area?       @relation(fields: [areaId], references: [id], onDelete: SetNull)
   title         String
   targetValue   Float
-  currentValue  Float     @default(0)
+  currentValue  Float       @default(0)
   unit          String?
   deadline      DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  milestones Milestone[]
 
   @@index([userId])
   @@index([areaId])
+}
+
+model Milestone {
+  id        String   @id @default(cuid())
+  goalId    String
+  goal      Goal     @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  title     String
+  achieved  Boolean  @default(false)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([goalId])
 }
 
 model Task {

@@ -6,13 +6,25 @@ import {
   updateGoalAction,
   deleteGoalAction,
   updateGoalProgressAction,
+  createMilestoneAction,
+  toggleMilestoneAction,
+  deleteMilestoneAction,
   type ActionState,
 } from "@/actions/goals";
 import PersianDatePicker from "@/components/PersianDatePicker";
 import { toPersianDigits } from "@/lib/format";
-import { Trash2, Pencil, Plus, Minus, PlusCircle } from "lucide-react";
+import {
+  Trash2,
+  Pencil,
+  Plus,
+  Minus,
+  PlusCircle,
+  Check,
+  ListChecks,
+} from "lucide-react";
 
 type Area = { id: string; title: string; color: string | null };
+type Milestone = { id: string; title: string; achieved: boolean };
 type Goal = {
   id: string;
   title: string;
@@ -21,6 +33,7 @@ type Goal = {
   unit: string | null;
   deadline: Date | null;
   areaId: string | null;
+  milestones: Milestone[];
 };
 
 export default function GoalManager({
@@ -169,11 +182,14 @@ function GoalForm({
 
 function GoalCard({ goal, areas }: { goal: Goal; areas: Area[] }) {
   const [editing, setEditing] = useState(false);
+  const [showMilestones, setShowMilestones] = useState(false);
+  const [addingMilestone, setAddingMilestone] = useState(false);
   const percent = Math.min(
     100,
     Math.round((goal.currentValue / goal.targetValue) * 100)
   );
   const area = areas.find((a) => a.id === goal.areaId);
+  const achievedCount = goal.milestones.filter((m) => m.achieved).length;
 
   if (editing) {
     return (
@@ -186,66 +202,180 @@ function GoalCard({ goal, areas }: { goal: Goal; areas: Area[] }) {
   }
 
   return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4">
-      <div className="flex items-start justify-between mb-2">
-        <div>
-          <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-            {goal.title}
-          </p>
-          {area && (
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-              {area.title}
+    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden">
+      <div className="p-4">
+        <div className="flex items-start justify-between mb-2">
+          <div>
+            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+              {goal.title}
             </p>
-          )}
+            {area && (
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                {area.title}
+              </p>
+            )}
+          </div>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setEditing(true)}
+              className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+            >
+              <Pencil size={15} />
+            </button>
+            <button
+              onClick={() => deleteGoalAction(goal.id)}
+              className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400"
+            >
+              <Trash2 size={15} />
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => setEditing(true)}
-            className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-          >
-            <Pencil size={15} />
-          </button>
-          <button
-            onClick={() => deleteGoalAction(goal.id)}
-            className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400"
-          >
-            <Trash2 size={15} />
-          </button>
+
+        <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-2 mb-2">
+          <div
+            className="bg-green-600 h-2 rounded-full transition-all"
+            style={{ width: `${percent}%` }}
+          />
+        </div>
+
+        <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+          <span>
+            {toPersianDigits(goal.currentValue)} /{" "}
+            {toPersianDigits(goal.targetValue)} {goal.unit ?? ""} (
+            {toPersianDigits(percent)}٪)
+          </span>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() =>
+                updateGoalProgressAction(goal.id, goal.currentValue - 1)
+              }
+              className="p-1 rounded bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+            >
+              <Minus size={14} />
+            </button>
+            <button
+              onClick={() =>
+                updateGoalProgressAction(goal.id, goal.currentValue + 1)
+              }
+              className="p-1 rounded bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+            >
+              <PlusCircle size={14} />
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-2 mb-2">
-        <div
-          className="bg-green-600 h-2 rounded-full transition-all"
-          style={{ width: `${percent}%` }}
-        />
-      </div>
+      <div className="border-t border-gray-50 dark:border-gray-800 px-4 py-2">
+        <button
+          onClick={() => setShowMilestones(!showMilestones)}
+          className="flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500"
+        >
+          <ListChecks size={13} />
+          مراحل ({toPersianDigits(achievedCount)}/
+          {toPersianDigits(goal.milestones.length)})
+        </button>
 
-      <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-        <span>
-          {toPersianDigits(goal.currentValue)} /{" "}
-          {toPersianDigits(goal.targetValue)} {goal.unit ?? ""} (
-          {toPersianDigits(percent)}٪)
-        </span>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() =>
-              updateGoalProgressAction(goal.id, goal.currentValue - 1)
-            }
-            className="p-1 rounded bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
-          >
-            <Minus size={14} />
-          </button>
-          <button
-            onClick={() =>
-              updateGoalProgressAction(goal.id, goal.currentValue + 1)
-            }
-            className="p-1 rounded bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
-          >
-            <PlusCircle size={14} />
-          </button>
-        </div>
+        {showMilestones && (
+          <div className="mt-2 flex flex-col gap-1.5">
+            {goal.milestones.map((m) => (
+              <MilestoneRow key={m.id} milestone={m} />
+            ))}
+
+            {addingMilestone ? (
+              <MilestoneAddForm
+                goalId={goal.id}
+                onDone={() => setAddingMilestone(false)}
+              />
+            ) : (
+              <button
+                onClick={() => setAddingMilestone(true)}
+                className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1 mt-1"
+              >
+                <Plus size={12} />
+                افزودن مرحله
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
+  );
+}
+
+function MilestoneRow({ milestone }: { milestone: Milestone }) {
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        onClick={() => toggleMilestoneAction(milestone.id)}
+        className={`shrink-0 w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+          milestone.achieved
+            ? "bg-green-600 border-green-600"
+            : "border-gray-300 dark:border-gray-600"
+        }`}
+      >
+        {milestone.achieved && <Check size={9} className="text-white" />}
+      </button>
+      <span
+        className={`text-xs ${
+          milestone.achieved
+            ? "line-through text-gray-400 dark:text-gray-600"
+            : "text-gray-600 dark:text-gray-300"
+        }`}
+      >
+        {milestone.title}
+      </span>
+      <button
+        onClick={() => deleteMilestoneAction(milestone.id)}
+        className="text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400"
+      >
+        <Trash2 size={11} />
+      </button>
+    </div>
+  );
+}
+
+function MilestoneAddForm({
+  goalId,
+  onDone,
+}: {
+  goalId: string;
+  onDone: () => void;
+}) {
+  const [state, formAction, isPending] = useActionState<ActionState, FormData>(
+    createMilestoneAction,
+    null
+  );
+
+  return (
+    <form action={formAction} className="flex items-center gap-2 mt-1">
+      <input type="hidden" name="goalId" value={goalId} />
+      <input
+        name="title"
+        placeholder="عنوان مرحله"
+        required
+        autoFocus
+        className="flex-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-green-500"
+      />
+      <button
+        type="submit"
+        disabled={isPending}
+        onClick={() => setTimeout(onDone, 100)}
+        className="text-xs text-green-600 dark:text-green-400 font-medium"
+      >
+        ثبت
+      </button>
+      <button
+        type="button"
+        onClick={onDone}
+        className="text-xs text-gray-400 dark:text-gray-500"
+      >
+        انصراف
+      </button>
+      {state?.error && (
+        <span className="text-xs text-red-500 dark:text-red-400">
+          {state.error}
+        </span>
+      )}
+    </form>
   );
 }

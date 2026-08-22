@@ -11,6 +11,9 @@ export default async function GoalsPage() {
     prisma.goal.findMany({
       where: { userId: session.userId },
       orderBy: { createdAt: "desc" },
+      include: {
+        milestones: { orderBy: { order: "asc" } },
+      },
     }),
     prisma.area.findMany({
       where: { userId: session.userId },

@@ -117,3 +117,70 @@ export async function updateGoalProgressAction(id: string, newValue: number) {
 
   revalidatePath("/goals");
 }
+
+export async function createMilestoneAction(
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const session = await getSession();
+  if (!session) return { error: "ابتدا وارد شوید" };
+
+  const goalId = formData.get("goalId") as string;
+  const title = formData.get("title") as string;
+
+  if (!title || title.trim().length === 0) {
+    return { error: "عنوان مرحله را وارد کنید" };
+  }
+
+  const goal = await prisma.goal.findUnique({ where: { id: goalId } });
+  if (!goal || goal.userId !== session.userId)
+    return { error: "دسترسی مجاز نیست" };
+
+  const lastMilestone = await prisma.milestone.findFirst({
+    where: { goalId },
+    orderBy: { order: "desc" },
+  });
+
+  await prisma.milestone.create({
+    data: {
+      goalId,
+      title: title.trim(),
+      order: (lastMilestone?.order ?? -1) + 1,
+    },
+  });
+
+  revalidatePath("/goals");
+  return null;
+}
+
+export async function toggleMilestoneAction(milestoneId: string) {
+  const session = await getSession();
+  if (!session) return;
+
+  const milestone = await prisma.milestone.findUnique({
+    where: { id: milestoneId },
+    include: { goal: true },
+  });
+  if (!milestone || milestone.goal.userId !== session.userId) return;
+
+  await prisma.milestone.update({
+    where: { id: milestoneId },
+    data: { achieved: !milestone.achieved },
+  });
+
+  revalidatePath("/goals");
+}
+
+export async function deleteMilestoneAction(milestoneId: string) {
+  const session = await getSession();
+  if (!session) return;
+
+  const milestone = await prisma.milestone.findUnique({
+    where: { id: milestoneId },
+    include: { goal: true },
+  });
+  if (!milestone || milestone.goal.userId !== session.userId) return;
+
+  await prisma.milestone.delete({ where: { id: milestoneId } });
+  revalidatePath("/goals");
+}

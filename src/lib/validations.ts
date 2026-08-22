@@ -84,3 +84,12 @@ export const transactionSchema = z.object({
 });
 
 export type TransactionInput = z.infer<typeof transactionSchema>;
+export const milestoneSchema = z.object({
+  goalId: z.string().min(1),
+  title: z
+    .string()
+    .min(1, "عنوان مرحله را وارد کنید")
+    .max(100, "عنوان خیلی طولانی است"),
+});
+
+export type MilestoneInput = z.infer<typeof milestoneSchema>;
